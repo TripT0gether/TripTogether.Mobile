@@ -1,0 +1,24 @@
+---
+description: Never create summary tasks or todo items after completing work. Just finish the task without creating follow-up summary todos.
+alwaysApply: true
+---
+
+# No Summary Tasks After Completion
+
+- **NEVER** create summary tasks, follow-up todos, or "completed" todo lists after finishing work
+- **NEVER** use `todo_write` to create summary or completion tracking tasks
+- When work is complete, simply finish - do not create additional todo items to document what was done
+- Only create todos when actively planning or breaking down work that needs to be done, not after it's finished
+- Do not announce that you're "creating a summary" or "updating todos" after completing tasks
+
+## Examples
+
+**BAD** - Don't do this:
+- Creating a summary todo after completing a feature
+- Marking todos as complete and then creating new summary todos
+- Creating "documentation" or "follow-up" todos after finishing work
+
+**GOOD** - Just finish:
+- Complete the task
+- Provide a brief response if needed
+- Move on - no todo creation needed
