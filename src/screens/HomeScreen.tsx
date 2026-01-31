@@ -1,73 +1,102 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { Button } from '../components/Button';
-import { useApi } from '../hooks/useApi';
-import { apiService } from '../services/api';
 
 export const HomeScreen: React.FC = () => {
   const router = useRouter();
-  
-  // Example API call - replace with your actual endpoint
-  // Commented out to avoid errors until API is configured
-  // const { data, loading, error, refetch } = useApi(
-  //   () => apiService.get('/example'), // Replace with your actual endpoint
-  //   []
-  // );
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View style={styles.container}>
       <StatusBar style="auto" />
-      <ScrollView 
-        contentContainerStyle={styles.container}
-        className="flex-1 px-4 py-6"
-      >
-        <View className="items-center mb-8">
-          <Text className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to TripTogether
-          </Text>
-          <Text className="text-gray-600 text-center">
-            Your mobile app is ready to connect to the .NET API
-          </Text>
-        </View>
 
-        <View className="w-full space-y-4">
-          <Button
-            title="Go to Profile"
-            onPress={() => router.push('/profile')}
-            variant="primary"
-          />
-          
-          <Button
-            title="Test API Connection"
-            onPress={() => {
-              // Example API call - uncomment and configure when ready
-              // refetch();
-              console.log('API test - configure your endpoint first');
-            }}
-            variant="outline"
-          />
-        </View>
+      <View style={styles.content}>
+        <Text style={styles.title}>Hello World! 🎉</Text>
+        <Text style={styles.subtitle}>Welcome to TripTogether Mobile</Text>
 
-        <View className="mt-8 p-4 bg-blue-50 rounded-lg">
-          <Text className="text-blue-900 font-semibold mb-2">
-            Setup Instructions:
-          </Text>
-          <Text className="text-blue-800 text-sm">
-            1. Update API_BASE_URL in src/services/api.ts{'\n'}
-            2. Configure your .NET API endpoints{'\n'}
-            3. Add your screens and components{'\n'}
-            4. Customize the styling with Tailwind classes
+        <Text style={styles.description}>
+          Your React Native Expo app is running successfully on the Android emulator!
+        </Text>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.push('/profile')}
+        >
+          <Text style={styles.buttonText}>Go to Profile</Text>
+        </TouchableOpacity>
+
+        <View style={styles.infoBox}>
+          <Text style={styles.infoTitle}>✅ Setup Complete!</Text>
+          <Text style={styles.infoText}>
+            • Android Emulator: Running{'\n'}
+            • Expo: Connected{'\n'}
+            • Hot Reload: Active{'\n'}
+            • Ready for Development!
           </Text>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 30,
+    paddingHorizontal: 20,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginBottom: 30,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoBox: {
+    backgroundColor: '#e3f2fd',
+    padding: 20,
+    borderRadius: 10,
+    width: '100%',
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    marginBottom: 10,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#1565c0',
+    lineHeight: 22,
   },
 });

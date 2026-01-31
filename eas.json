@@ -1,0 +1,51 @@
+{
+    "cli": {
+        "appVersionSource": "remote",
+        "promptToConfigurePushNotifications": false
+    },
+    "build": {
+        "base": {
+            "pnpm": "9.15.4",
+            "cache": {
+                "key": "turbo",
+                "paths": [
+                    "node_modules/.cache/turbo",
+                    ".turbo"
+                ]
+            },
+            "env": {
+                "EXPO_USE_FAST_RESOLVER": "true"
+            }
+        },
+        "development": {
+            "extends": "base",
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "ios": {
+                "simulator": true
+            }
+        },
+        "preview": {
+            "extends": "base",
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            }
+        },
+        "production": {
+            "extends": "base",
+            "distribution": "store",
+            "android": {
+                "buildType": "app-bundle"
+            },
+            "ios": {
+                "buildType": "release"
+            }
+        }
+    },
+    "submit": {
+        "production": {}
+    }
+}

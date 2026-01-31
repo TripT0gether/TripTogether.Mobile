@@ -38,7 +38,10 @@ yarn-error.log
 
 # pnpm
 .pnpm-store/
-pnpm-lock.yaml
+
+# Turborepo
+.turbo/
+node_modules/.cache/
 
 # fastlane
 **/fastlane/report.xml
