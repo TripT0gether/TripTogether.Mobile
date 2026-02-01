@@ -96,11 +96,16 @@ class ApiService {
             }
 
             // Call refresh endpoint
-            const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
               refreshToken,
             });
 
-            const { accessToken, refreshToken: newRefreshToken } = data;
+            // Handle wrapped response format
+            if (!data.isSuccess || !data.value?.data) {
+              throw new Error(data.error || 'Token refresh failed');
+            }
+
+            const { accessToken, refreshToken: newRefreshToken } = data.value.data;
 
             // Save new tokens
             await tokenStorage.saveTokens(accessToken, newRefreshToken);

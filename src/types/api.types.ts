@@ -1,16 +1,29 @@
 /**
- * API Response Types
  * Generic types for API responses and errors
  */
 
 /**
- * Standard API response wrapper
+ * Backend API wrapper response format
  */
-export interface ApiResponse<T> {
-    data: T;
-    message?: string;
-    success: boolean;
+export interface ApiWrapper<T> {
+    isSuccess: boolean;
+    value: T | null;
+    error: string | null;
 }
+
+/**
+ * Standard API response value
+ */
+export interface ApiResponseValue<T> {
+    code: string;
+    message: string;
+    data?: T;
+}
+
+/**
+ * Complete API response (wrapper + value)
+ */
+export type ApiResponse<T> = ApiWrapper<ApiResponseValue<T>>;
 
 /**
  * API Error response
@@ -22,7 +35,7 @@ export interface ApiError {
 }
 
 /**
- * Paginated response
+ * Paginated response data
  */
 export interface PaginatedResponse<T> {
     data: T[];
