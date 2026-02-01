@@ -1,9 +1,8 @@
-import { apiService } from './api';
-import { API_ENDPOINTS } from '../utils/constants';
+import { apiService } from './apiConfig';
+import { tokenStorage } from './tokenStorage';
 
 /**
- * Authentication Service
- * Example service for .NET API authentication endpoints
+ * Authentication Service - call API auth
  */
 
 export interface LoginRequest {
@@ -18,8 +17,8 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-  token: string;
-  refreshToken?: string;
+  accessToken: string;
+  refreshToken: string;
   user: {
     id: string;
     email: string;
@@ -29,19 +28,15 @@ export interface AuthResponse {
 
 export const authService = {
   /**
-   * Login user
+   * Login user with email and password
    */
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     const response = await apiService.post<AuthResponse>(
-      API_ENDPOINTS.AUTH.LOGIN,
+      '/auth/login',
       credentials
     );
-    
-    // Store token securely
-    if (response.token) {
-      await apiService.setAuthToken(response.token);
-    }
-    
+
+    await tokenStorage.saveTokens(response.accessToken, response.refreshToken);
     return response;
   },
 
@@ -50,42 +45,39 @@ export const authService = {
    */
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await apiService.post<AuthResponse>(
-      API_ENDPOINTS.AUTH.REGISTER,
+      '/auth/register',
       data
     );
-    
-    // Store token securely
-    if (response.token) {
-      await apiService.setAuthToken(response.token);
-    }
-    
+
+    await tokenStorage.saveTokens(response.accessToken, response.refreshToken);
     return response;
   },
 
   /**
-   * Logout user
+   * Logout user - clear tokens and notify backend
    */
   async logout(): Promise<void> {
     try {
-      await apiService.post(API_ENDPOINTS.AUTH.LOGOUT);
+      await apiService.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout API call failed:', error);
     } finally {
-      // Always clear local token
-      await apiService.clearAuthToken();
+      await tokenStorage.clearTokens();
     }
   },
 
   /**
-   * Refresh authentication token
+   * Get current authenticated user
    */
-  async refreshToken(): Promise<AuthResponse> {
-    const response = await apiService.post<AuthResponse>(
-      API_ENDPOINTS.AUTH.REFRESH
-    );
-    
-    if (response.token) {
-      await apiService.setAuthToken(response.token);
-    }
-    
-    return response;
+  async getCurrentUser(): Promise<AuthResponse['user']> {
+    return await apiService.get<AuthResponse['user']>('/auth/me');
+  },
+
+  /**
+   * Check if user is authenticated (has valid tokens)
+   */
+  async isAuthenticated(): Promise<boolean> {
+    return await tokenStorage.hasTokens();
   },
 };
+
