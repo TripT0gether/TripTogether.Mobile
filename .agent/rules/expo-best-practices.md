@@ -41,7 +41,8 @@ Before implementing features, consult these official resources:
 - **Type-safe routes**: Use TypeScript for route params
 
 ## Data & Assets
-- **Assets**: Use Expo's asset system for images and fonts
+- **Images**: Use `expo-image` instead of React Native's `Image` for caching, blurhash placeholders, and better list performance.
+- **Assets**: Use Expo's asset system for fonts
 - **Secure Storage**: Use `expo-secure-store` for sensitive data
 - **Async Storage**: Use `@react-native-async-storage/async-storage` for non-sensitive data
 - **API Calls**: Centralize in `src/services/` with axios or fetch

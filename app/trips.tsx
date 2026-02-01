@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 
 // Example data
@@ -13,8 +13,8 @@ export default function TripsScreen() {
     const router = useRouter();
 
     const renderTrip = ({ item }: { item: typeof trips[0] }) => (
-        <TouchableOpacity
-            className="bg-white p-4 rounded-lg mb-3 shadow-sm"
+        <Pressable
+            className="bg-white p-4 rounded-lg mb-3 shadow-sm active:opacity-70"
             onPress={() => router.push(`/trips/${item.id}`)}
         >
             <Text className="text-lg font-semibold text-gray-800 mb-1">
@@ -23,7 +23,7 @@ export default function TripsScreen() {
             <Text className="text-sm text-gray-600">
                 {item.date}
             </Text>
-        </TouchableOpacity>
+        </Pressable>
     );
 
     return (
