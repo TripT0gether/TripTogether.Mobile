@@ -436,6 +436,7 @@ Timing: ease-in-out (default)
   transform: scale(0.98);
 }
 ```
+
 ---
 
 ## 10. Do's and Don'ts
