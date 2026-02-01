@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 
 // Example data
@@ -14,53 +14,27 @@ export default function TripsScreen() {
 
     const renderTrip = ({ item }: { item: typeof trips[0] }) => (
         <TouchableOpacity
-            style={styles.tripCard}
+            className="bg-white p-4 rounded-lg mb-3 shadow-sm"
             onPress={() => router.push(`/trips/${item.id}`)}
         >
-            <Text style={styles.tripName}>{item.name}</Text>
-            <Text style={styles.tripDate}>{item.date}</Text>
+            <Text className="text-lg font-semibold text-gray-800 mb-1">
+                {item.name}
+            </Text>
+            <Text className="text-sm text-gray-600">
+                {item.date}
+            </Text>
         </TouchableOpacity>
     );
 
     return (
-        <View style={styles.container}>
+        <View className="flex-1 bg-gray-100">
             <FlatList
                 data={trips}
                 renderItem={renderTrip}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.list}
+                contentContainerStyle={{ padding: 16 }}
             />
         </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    list: {
-        padding: 16,
-    },
-    tripCard: {
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    tripName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 4,
-    },
-    tripDate: {
-        fontSize: 14,
-        color: '#666',
-    },
-});
