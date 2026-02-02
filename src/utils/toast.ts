@@ -10,10 +10,10 @@ export const showSuccessToast = (title: string, message?: string) => {
         type: 'success',
         text1: title,
         text2: message,
-        position: 'top',
+        position: 'bottom',
         visibilityTime: 3000,
         autoHide: true,
-        topOffset: 60,
+        bottomOffset: 40,
     });
 };
 
@@ -22,10 +22,10 @@ export const showErrorToast = (title: string, message?: string) => {
         type: 'error',
         text1: title,
         text2: message,
-        position: 'top',
+        position: 'bottom',
         visibilityTime: 4000,
         autoHide: true,
-        topOffset: 60,
+        bottomOffset: 40,
     });
 };
 
@@ -34,10 +34,10 @@ export const showInfoToast = (title: string, message?: string) => {
         type: 'info',
         text1: title,
         text2: message,
-        position: 'top',
+        position: 'bottom',
         visibilityTime: 3000,
         autoHide: true,
-        topOffset: 60,
+        bottomOffset: 40,
     });
 };
 
