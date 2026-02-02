@@ -3,12 +3,31 @@ import { tokenStorage } from './tokenStorage';
 
 /**
  * API Configuration
+ * 
+ * For Android Emulator: use 10.0.2.2 (special IP that routes to host localhost)
+ * For Physical Device: use your computer's local IP (e.g., 192.168.1.16)
+ * For iOS Simulator: localhost works
  */
-const API_BASE_URL = __DEV__
-  ? 'http://localhost:5000/api'           // Development URL
-  : 'https://your-api-domain.com/api';    // Production URL - nào mua update
+import { Platform } from 'react-native';
 
-// Track refresh state để tránh nhiều lần refresh cùng lúc
+const getDevApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5000/api';
+  }
+  return 'http://192.168.1.16:5000/api';
+};
+
+const API_BASE_URL = __DEV__
+  ? getDevApiUrl()
+  : 'https://your-api-domain.com/api';
+
+// Debug logging
+console.log('🔧 API Configuration:', {
+  platform: Platform.OS,
+  isDev: __DEV__,
+  baseUrl: API_BASE_URL,
+});
+
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
@@ -29,10 +48,6 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
   failedQueue = [];
 };
 
-/**
- * API Service Class
- * Handles all HTTP requests to the .NET API with automatic token refresh
- */
 class ApiService {
   private client: AxiosInstance;
 

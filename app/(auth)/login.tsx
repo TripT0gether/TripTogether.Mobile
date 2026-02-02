@@ -42,12 +42,28 @@ export default function LoginScreen() {
         }
 
         setLoading(true);
+        console.log('🔐 Attempting login with:', { email });
 
         try {
             await authService.login({ email, password });
+            console.log('✅ Login successful');
             showSuccessToast('Welcome back!', 'Login successful');
             router.replace('/');
         } catch (err: any) {
+            // Detailed error logging
+            console.error('❌ Login error:', {
+                message: err.message,
+                code: err.code,
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                config: {
+                    url: err.config?.url,
+                    baseURL: err.config?.baseURL,
+                    method: err.config?.method,
+                }
+            });
+
             showErrorToast('Login Failed', err.message || 'Please check your credentials and try again');
         } finally {
             setLoading(false);
