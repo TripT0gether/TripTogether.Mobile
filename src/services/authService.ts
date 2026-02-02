@@ -3,10 +3,6 @@ import { tokenStorage } from './tokenStorage';
 import { ApiResponse } from '../types/api.types';
 import { User, AuthTokens } from '../types/user.types';
 
-/**
- * Authentication Service - handles all auth-related API calls
- */
-
 // ============= Request Types =============
 
 export interface RegisterRequest {

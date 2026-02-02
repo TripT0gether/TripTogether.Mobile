@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService } from '../src/services/authService';
+import Header from '../src/components/Header';
 
 // Mock data for demonstration
 const mockGroups = [
@@ -71,11 +72,8 @@ export default function IndexScreen() {
 
     return (
         <View className="flex-1 bg-[#F5F1E8]">
-            {/* Header */}
-            <View className="bg-[#FAF8F3] border-b-2 border-[#D4CCC0] px-4 py-4">
-                <Text className="text-2xl font-bold text-[#7A5C47]">TripTogether</Text>
-                <Text className="text-sm text-[#7A6F65]">Group travel made simple</Text>
-            </View>
+            {/* Header with Avatar */}
+            <Header />
 
             <ScrollView className="flex-1 px-4 py-6">
                 {/* Hero Section */}
@@ -136,10 +134,10 @@ export default function IndexScreen() {
                                     <Text className="text-xs text-[#7A6F65] mb-1">Ledger</Text>
                                     <Text
                                         className={`text-base font-bold ${group.balance > 0
-                                                ? 'text-[#6B8E4E]'
-                                                : group.balance < 0
-                                                    ? 'text-[#A85442]'
-                                                    : 'text-[#7A6F65]'
+                                            ? 'text-[#6B8E4E]'
+                                            : group.balance < 0
+                                                ? 'text-[#A85442]'
+                                                : 'text-[#7A6F65]'
                                             }`}
                                     >
                                         {group.balance > 0 ? '+' : ''}${Math.abs(group.balance).toFixed(2)}
