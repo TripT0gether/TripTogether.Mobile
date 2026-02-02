@@ -2,6 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { ErrorBoundary } from 'react-error-boundary';
 import { View, Text, StyleSheet } from 'react-native';
+import Toast, { BaseToast, ErrorToast, InfoToast } from 'react-native-toast-message';
 
 // Error fallback component
 function ErrorFallback({ error, resetErrorBoundary }: any) {
@@ -13,28 +14,120 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
   );
 }
 
+// Custom Toast Configuration with Retro Styling
+const toastConfig = {
+  success: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{
+        borderLeftColor: '#6B8E4E',
+        borderLeftWidth: 6,
+        backgroundColor: '#FAF8F3',
+        borderWidth: 2,
+        borderColor: '#6B8E4E',
+        borderRadius: 8,
+      }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#3D3530',
+      }}
+      text2Style={{
+        fontSize: 14,
+        color: '#7A6F65',
+      }}
+    />
+  ),
+  error: (props: any) => (
+    <ErrorToast
+      {...props}
+      style={{
+        borderLeftColor: '#A85442',
+        borderLeftWidth: 6,
+        backgroundColor: '#FAF8F3',
+        borderWidth: 2,
+        borderColor: '#A85442',
+        borderRadius: 8,
+      }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#3D3530',
+      }}
+      text2Style={{
+        fontSize: 14,
+        color: '#7A6F65',
+      }}
+    />
+  ),
+  info: (props: any) => (
+    <InfoToast
+      {...props}
+      style={{
+        borderLeftColor: '#5B7F8A',
+        borderLeftWidth: 6,
+        backgroundColor: '#FAF8F3',
+        borderWidth: 2,
+        borderColor: '#5B7F8A',
+        borderRadius: 8,
+      }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#3D3530',
+      }}
+      text2Style={{
+        fontSize: 14,
+        color: '#7A6F65',
+      }}
+    />
+  ),
+};
+
 export default function RootLayout() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#007AFF',
+            backgroundColor: '#FAF8F3',
           },
-          headerTintColor: '#fff',
+          headerTintColor: '#7A5C47',
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          // Enable gesture navigation
+          headerShadowVisible: false,
           gestureEnabled: true,
-          // Smooth animations
           animation: 'slide_from_right',
         }}
       >
         <Stack.Screen
           name="index"
           options={{
-            title: 'TripTogether',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="(auth)/login"
+          options={{
+            title: 'Sign In',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name="(auth)/register"
+          options={{
+            title: 'Create Account',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name="(auth)/verify-otp"
+          options={{
+            title: 'Verify Email',
             headerShown: true,
           }}
         />
@@ -43,11 +136,12 @@ export default function RootLayout() {
           options={{
             title: 'Profile',
             headerShown: true,
-            // Enable back button
             headerBackTitle: 'Back',
           }}
         />
       </Stack>
+      {/* Toast component */}
+      <Toast config={toastConfig} />
     </ErrorBoundary>
   );
 }
@@ -58,17 +152,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F1E8',
   },
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ff3b30',
+    color: '#A85442',
     marginBottom: 10,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#666',
+    color: '#7A6F65',
     textAlign: 'center',
   },
 });
