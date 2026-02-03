@@ -5,7 +5,7 @@ import { tokenStorage } from './tokenStorage';
  * API Configuration
  * 
  * For Android Emulator: use 10.0.2.2 (special IP that routes to host localhost)
- * For Physical Device: use your computer's local IP (e.g., 192.168.1.16)
+ * For Physical Device: use computer's local IP (e.g., 192.168.1.16)
  * For iOS Simulator: localhost works
  */
 import { Platform } from 'react-native';
@@ -22,7 +22,7 @@ const API_BASE_URL = __DEV__
   : 'https://your-api-domain.com/api';
 
 // Debug logging
-console.log('🔧 API Configuration:', {
+console.log('API Configuration:', {
   platform: Platform.OS,
   isDev: __DEV__,
   baseUrl: API_BASE_URL,

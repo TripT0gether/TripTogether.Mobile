@@ -14,6 +14,8 @@ import { useRouter } from 'expo-router';
 import { authService } from '../../src/services/authService';
 import { showErrorToast, showSuccessToast } from '../../src/utils/toast';
 import { Mail, User, Lock, Eye, EyeOff, ArrowLeft, Check, X, ChevronRight } from 'lucide-react-native';
+import RetroGrid from '../../src/components/RetroGrid';
+import { theme, shadows } from '../../src/constants/theme';
 
 // Step configuration
 const STEPS = [
@@ -33,12 +35,6 @@ export default function RegisterScreen() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const fadeAnim = useRef(new Animated.Value(1)).current;
-
-    // Refs for inputs
-    const emailRef = useRef<TextInput>(null);
-    const usernameRef = useRef<TextInput>(null);
-    const passwordRef = useRef<TextInput>(null);
-    const confirmPasswordRef = useRef<TextInput>(null);
 
     const validateEmail = (email: string): boolean => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -135,220 +131,292 @@ export default function RegisterScreen() {
     const passwordsDontMatch = password && confirmPassword && password !== confirmPassword;
 
     return (
-        <KeyboardAvoidingView
-            className="flex-1 bg-[#F5F1E8]"
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <ScrollView
-                contentContainerStyle={{ flexGrow: 1, padding: 24 }}
-                keyboardShouldPersistTaps="handled"
+        <RetroGrid>
+            <KeyboardAvoidingView
+                className="flex-1"
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                {/* Back Button */}
-                <Pressable
-                    onPress={handleBack}
-                    className="flex-row items-center mb-4"
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1, padding: 24 }}
+                    keyboardShouldPersistTaps="handled"
                 >
-                    <ArrowLeft size={24} color="#7A5C47" />
-                    <Text className="text-[#7A5C47] font-semibold ml-2">Back</Text>
-                </Pressable>
-
-                {/* Progress Dots */}
-                <View className="flex-row justify-center items-center gap-2 mb-8">
-                    {STEPS.map((_, index) => (
-                        <View
-                            key={index}
-                            className={`h-2 rounded-full ${index === step
-                                    ? 'bg-[#7A5C47] w-6'
-                                    : index < step
-                                        ? 'bg-[#7A5C47] w-2'
-                                        : 'bg-[#D4CCC0] w-2'
-                                }`}
-                        />
-                    ))}
-                </View>
-
-                {/* Step Content - Animated */}
-                <Animated.View style={{ opacity: fadeAnim }} className="flex-1">
-                    {/* Icon & Title */}
-                    <View className="items-center mb-8">
-                        <View className="w-20 h-20 rounded-full bg-[#7A5C47]/10 items-center justify-center mb-4">
-                            <StepIcon size={40} color="#7A5C47" />
-                        </View>
-                        <Text className="text-2xl font-bold text-[#3D3530] text-center">
-                            {STEPS[step].title}
+                    {/* Back Button */}
+                    <Pressable
+                        onPress={handleBack}
+                        className="flex-row items-center mb-4"
+                    >
+                        <ArrowLeft size={24} color={theme.primary} />
+                        <Text
+                            className="font-semibold ml-2"
+                            style={{ color: theme.primary }}
+                        >
+                            Back
                         </Text>
-                        <Text className="text-sm text-[#7A6F65] text-center mt-1">
-                            {STEPS[step].subtitle}
-                        </Text>
+                    </Pressable>
+
+                    {/* Progress Dots */}
+                    <View className="flex-row justify-center items-center gap-2 mb-8">
+                        {STEPS.map((_, index) => (
+                            <View
+                                key={index}
+                                className="h-2 rounded-full"
+                                style={{
+                                    width: index === step ? 24 : 8,
+                                    backgroundColor: index <= step ? theme.primary : theme.border,
+                                }}
+                            />
+                        ))}
                     </View>
 
-                    {/* Step Form */}
-                    <View className="bg-[#FAF8F3] rounded-2xl border-2 border-[#7A5C47] p-6 mb-6">
-
-                        {/* Step 0: Email */}
-                        {step === 0 && (
-                            <View className="flex-row items-center bg-[#EDE9DF] border-2 border-[#D4CCC0] rounded-xl px-4">
-                                <Mail size={20} color="#7A6F65" />
-                                <TextInput
-                                    ref={emailRef}
-                                    className="flex-1 py-4 px-3 text-lg text-[#3D3530]"
-                                    placeholder="your@email.com"
-                                    placeholderTextColor="#7A6F65"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    autoFocus
-                                />
+                    {/* Step Content */}
+                    <Animated.View style={{ opacity: fadeAnim }} className="flex-1">
+                        {/* Icon & Title */}
+                        <View className="items-center mb-8">
+                            <View
+                                className="w-20 h-20 rounded-full items-center justify-center mb-4"
+                                style={{ backgroundColor: `${theme.primary}15` }}
+                            >
+                                <StepIcon size={40} color={theme.primary} />
                             </View>
-                        )}
+                            <Text
+                                className="text-2xl font-bold text-center"
+                                style={{ color: theme.foreground }}
+                            >
+                                {STEPS[step].title}
+                            </Text>
+                            <Text
+                                className="text-sm text-center mt-1"
+                                style={{ color: theme.mutedForeground }}
+                            >
+                                {STEPS[step].subtitle}
+                            </Text>
+                        </View>
 
-                        {/* Step 1: Profile */}
-                        {step === 1 && (
-                            <View className="gap-4">
-                                <View className="flex-row items-center bg-[#EDE9DF] border-2 border-[#D4CCC0] rounded-xl px-4">
-                                    <User size={20} color="#7A6F65" />
+                        {/* Step Form */}
+                        <View
+                            className="rounded-xl border-2 p-6 mb-6"
+                            style={{
+                                backgroundColor: theme.card,
+                                borderColor: theme.primary,
+                                ...shadows.retro,
+                            }}
+                        >
+                            {/* Step 0: Email */}
+                            {step === 0 && (
+                                <View
+                                    className="flex-row items-center rounded-lg border-2 px-4"
+                                    style={{
+                                        backgroundColor: theme.input,
+                                        borderColor: theme.border,
+                                    }}
+                                >
+                                    <Mail size={20} color={theme.mutedForeground} />
                                     <TextInput
-                                        ref={usernameRef}
-                                        className="flex-1 py-4 px-3 text-lg text-[#3D3530]"
-                                        placeholder="Choose a username"
-                                        placeholderTextColor="#7A6F65"
-                                        value={username}
-                                        onChangeText={setUsername}
+                                        className="flex-1 py-4 px-3 text-lg"
+                                        style={{ color: theme.foreground }}
+                                        placeholder="your@email.com"
+                                        placeholderTextColor={theme.mutedForeground}
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        keyboardType="email-address"
                                         autoCapitalize="none"
                                         autoCorrect={false}
                                         autoFocus
                                     />
                                 </View>
+                            )}
 
-                                <View className="mt-2">
-                                    <Text className="text-sm font-semibold text-[#7A6F65] mb-3 text-center">
-                                        I am a...
-                                    </Text>
-                                    <View className="flex-row gap-3">
-                                        <Pressable
-                                            className={`flex-1 py-4 rounded-xl border-2 ${gender
-                                                    ? 'border-[#7A5C47] bg-[#7A5C47]/10'
-                                                    : 'border-[#D4CCC0] bg-[#FAF8F3]'
-                                                } items-center`}
-                                            onPress={() => setGender(true)}
+                            {/* Step 1: Profile */}
+                            {step === 1 && (
+                                <View className="gap-4">
+                                    <View
+                                        className="flex-row items-center rounded-lg border-2 px-4"
+                                        style={{
+                                            backgroundColor: theme.input,
+                                            borderColor: theme.border,
+                                        }}
+                                    >
+                                        <User size={20} color={theme.mutedForeground} />
+                                        <TextInput
+                                            className="flex-1 py-4 px-3 text-lg"
+                                            style={{ color: theme.foreground }}
+                                            placeholder="Choose a username"
+                                            placeholderTextColor={theme.mutedForeground}
+                                            value={username}
+                                            onChangeText={setUsername}
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
+                                            autoFocus
+                                        />
+                                    </View>
+
+                                    <View className="mt-2">
+                                        <Text
+                                            className="text-sm font-semibold mb-3 text-center"
+                                            style={{ color: theme.mutedForeground }}
                                         >
-                                            <User size={32} color={gender ? '#7A5C47' : '#7A6F65'} />
-                                            <Text className={`text-base font-semibold mt-1 ${gender ? 'text-[#7A5C47]' : 'text-[#7A6F65]'
-                                                }`}>
-                                                Male
-                                            </Text>
-                                        </Pressable>
-                                        <Pressable
-                                            className={`flex-1 py-4 rounded-xl border-2 ${!gender
-                                                    ? 'border-[#7A5C47] bg-[#7A5C47]/10'
-                                                    : 'border-[#D4CCC0] bg-[#FAF8F3]'
-                                                } items-center`}
-                                            onPress={() => setGender(false)}
-                                        >
-                                            <User size={32} color={!gender ? '#7A5C47' : '#7A6F65'} />
-                                            <Text className={`text-base font-semibold mt-1 ${!gender ? 'text-[#7A5C47]' : 'text-[#7A6F65]'
-                                                }`}>
-                                                Female
-                                            </Text>
-                                        </Pressable>
+                                            I am a...
+                                        </Text>
+                                        <View className="flex-row gap-3">
+                                            <Pressable
+                                                className="flex-1 py-4 rounded-xl border-2 items-center"
+                                                style={{
+                                                    borderColor: gender ? theme.primary : theme.border,
+                                                    backgroundColor: gender ? `${theme.primary}15` : theme.card,
+                                                }}
+                                                onPress={() => setGender(true)}
+                                            >
+                                                <User size={32} color={gender ? theme.primary : theme.mutedForeground} />
+                                                <Text
+                                                    className="text-base font-semibold mt-1"
+                                                    style={{ color: gender ? theme.primary : theme.mutedForeground }}
+                                                >
+                                                    Male
+                                                </Text>
+                                            </Pressable>
+                                            <Pressable
+                                                className="flex-1 py-4 rounded-xl border-2 items-center"
+                                                style={{
+                                                    borderColor: !gender ? theme.primary : theme.border,
+                                                    backgroundColor: !gender ? `${theme.primary}15` : theme.card,
+                                                }}
+                                                onPress={() => setGender(false)}
+                                            >
+                                                <User size={32} color={!gender ? theme.primary : theme.mutedForeground} />
+                                                <Text
+                                                    className="text-base font-semibold mt-1"
+                                                    style={{ color: !gender ? theme.primary : theme.mutedForeground }}
+                                                >
+                                                    Female
+                                                </Text>
+                                            </Pressable>
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
-                        )}
+                            )}
 
-                        {/* Step 2: Password */}
-                        {step === 2 && (
-                            <View className="gap-4">
-                                <View>
-                                    <View className="flex-row items-center bg-[#EDE9DF] border-2 border-[#D4CCC0] rounded-xl px-4">
-                                        <Lock size={20} color="#7A6F65" />
+                            {/* Step 2: Password */}
+                            {step === 2 && (
+                                <View className="gap-4">
+                                    <View>
+                                        <View
+                                            className="flex-row items-center rounded-lg border-2 px-4"
+                                            style={{
+                                                backgroundColor: theme.input,
+                                                borderColor: theme.border,
+                                            }}
+                                        >
+                                            <Lock size={20} color={theme.mutedForeground} />
+                                            <TextInput
+                                                className="flex-1 py-4 px-3 text-lg"
+                                                style={{ color: theme.foreground }}
+                                                placeholder="Create password"
+                                                placeholderTextColor={theme.mutedForeground}
+                                                value={password}
+                                                onChangeText={setPassword}
+                                                secureTextEntry={!showPassword}
+                                                autoCapitalize="none"
+                                                autoCorrect={false}
+                                            />
+                                            <Pressable onPress={() => setShowPassword(!showPassword)}>
+                                                {showPassword
+                                                    ? <Eye size={20} color={theme.mutedForeground} />
+                                                    : <EyeOff size={20} color={theme.mutedForeground} />
+                                                }
+                                            </Pressable>
+                                        </View>
+                                        <Text
+                                            className="text-xs mt-1 ml-1"
+                                            style={{ color: theme.mutedForeground }}
+                                        >
+                                            At least 6 characters
+                                        </Text>
+                                    </View>
+
+                                    <View
+                                        className="flex-row items-center rounded-lg border-2 px-4"
+                                        style={{
+                                            backgroundColor: theme.input,
+                                            borderColor: theme.border,
+                                        }}
+                                    >
+                                        <Lock size={20} color={theme.mutedForeground} />
                                         <TextInput
-                                            ref={passwordRef}
-                                            className="flex-1 py-4 px-3 text-lg text-[#3D3530]"
-                                            placeholder="Create password"
-                                            placeholderTextColor="#7A6F65"
-                                            value={password}
-                                            onChangeText={setPassword}
+                                            className="flex-1 py-4 px-3 text-lg"
+                                            style={{ color: theme.foreground }}
+                                            placeholder="Confirm password"
+                                            placeholderTextColor={theme.mutedForeground}
+                                            value={confirmPassword}
+                                            onChangeText={setConfirmPassword}
                                             secureTextEntry={!showPassword}
                                             autoCapitalize="none"
                                             autoCorrect={false}
                                         />
-                                        <Pressable onPress={() => setShowPassword(!showPassword)}>
-                                            {showPassword
-                                                ? <Eye size={20} color="#7A6F65" />
-                                                : <EyeOff size={20} color="#7A6F65" />
+                                    </View>
+
+                                    {/* Password match indicator */}
+                                    {(passwordsMatch || passwordsDontMatch) && (
+                                        <View className="flex-row items-center gap-2">
+                                            {passwordsMatch
+                                                ? <Check size={18} color={theme.accent} />
+                                                : <X size={18} color={theme.destructive} />
                                             }
-                                        </Pressable>
-                                    </View>
-                                    <Text className="text-xs text-[#7A6F65] mt-1 ml-1">
-                                        At least 6 characters
+                                            <Text
+                                                className="text-sm"
+                                                style={{ color: passwordsMatch ? theme.accent : theme.destructive }}
+                                            >
+                                                {passwordsMatch ? 'Passwords match!' : 'Passwords don\'t match'}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Action Button */}
+                        <Pressable
+                            className={`flex-row items-center justify-center py-4 rounded-lg ${loading ? 'opacity-50' : ''}`}
+                            style={{ backgroundColor: theme.primary }}
+                            onPress={step < 2 ? handleNext : handleRegister}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color={theme.primaryForeground} />
+                            ) : (
+                                <>
+                                    <Text
+                                        className="text-lg font-bold"
+                                        style={{ color: theme.primaryForeground }}
+                                    >
+                                        {step < 2 ? 'Continue' : 'Create Account'}
                                     </Text>
-                                </View>
+                                    {step < 2 && <ChevronRight size={20} color={theme.primaryForeground} style={{ marginLeft: 4 }} />}
+                                </>
+                            )}
+                        </Pressable>
 
-                                <View className="flex-row items-center bg-[#EDE9DF] border-2 border-[#D4CCC0] rounded-xl px-4">
-                                    <Lock size={20} color="#7A6F65" />
-                                    <TextInput
-                                        ref={confirmPasswordRef}
-                                        className="flex-1 py-4 px-3 text-lg text-[#3D3530]"
-                                        placeholder="Confirm password"
-                                        placeholderTextColor="#7A6F65"
-                                        value={confirmPassword}
-                                        onChangeText={setConfirmPassword}
-                                        secureTextEntry={!showPassword}
-                                        autoCapitalize="none"
-                                        autoCorrect={false}
-                                    />
-                                </View>
-
-                                {/* Password match indicator */}
-                                {(passwordsMatch || passwordsDontMatch) && (
-                                    <View className="flex-row items-center gap-2">
-                                        {passwordsMatch
-                                            ? <Check size={18} color="#6B8E4E" />
-                                            : <X size={18} color="#A85442" />
-                                        }
-                                        <Text className={`text-sm ${passwordsMatch ? 'text-[#6B8E4E]' : 'text-[#A85442]'}`}>
-                                            {passwordsMatch ? 'Passwords match!' : 'Passwords don\'t match'}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Action Button */}
-                    <Pressable
-                        className={`bg-[#7A5C47] rounded-xl py-4 flex-row items-center justify-center ${loading ? 'opacity-50' : ''}`}
-                        onPress={step < 2 ? handleNext : handleRegister}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#FAF8F3" />
-                        ) : (
-                            <>
-                                <Text className="text-lg font-bold text-[#FAF8F3]">
-                                    {step < 2 ? 'Continue' : 'Create Account'}
+                        {/* Login Link */}
+                        <Pressable
+                            className="items-center mt-6"
+                            onPress={() => router.push('/(auth)/login')}
+                            disabled={loading}
+                        >
+                            <Text
+                                className="text-sm"
+                                style={{ color: theme.mutedForeground }}
+                            >
+                                Already have an account?{' '}
+                                <Text
+                                    className="font-bold"
+                                    style={{ color: theme.primary }}
+                                >
+                                    Sign in
                                 </Text>
-                                {step < 2 && <ChevronRight size={20} color="#FAF8F3" className="ml-1" />}
-                            </>
-                        )}
-                    </Pressable>
-
-                    {/* Login Link */}
-                    <Pressable
-                        className="items-center mt-6"
-                        onPress={() => router.push('/(auth)/login')}
-                        disabled={loading}
-                    >
-                        <Text className="text-sm text-[#7A6F65]">
-                            Already have an account?{' '}
-                            <Text className="font-bold text-[#7A5C47]">Sign in</Text>
-                        </Text>
-                    </Pressable>
-                </Animated.View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                            </Text>
+                        </Pressable>
+                    </Animated.View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </RetroGrid>
     );
 }

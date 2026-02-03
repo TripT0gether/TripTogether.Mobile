@@ -5,6 +5,7 @@ import { User, Settings, LogOut, Bell, HelpCircle } from 'lucide-react-native';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { theme, shadows } from '../constants/theme';
 import type { User as UserType } from '../types/user.types';
 
 export default function Header() {
@@ -23,7 +24,6 @@ export default function Header() {
             setUser(profile);
         } catch (error: any) {
             console.error('Failed to load user profile:', error);
-            showErrorToast('Profile Error', 'Failed to load profile');
         } finally {
             setLoading(false);
         }
@@ -40,7 +40,6 @@ export default function Header() {
         }
     };
 
-    // Get user initials for avatar
     const getInitials = () => {
         if (!user?.username) return '?';
         const names = user.username.split(' ');
@@ -52,22 +51,45 @@ export default function Header() {
 
     return (
         <>
-            <View className="bg-[#FAF8F3] border-b-2 border-[#D4CCC0] px-4 py-4">
+            <View
+                className="px-4 py-5 border-b-2"
+                style={{
+                    backgroundColor: `${theme.card}F0`,
+                    borderBottomColor: theme.border,
+                }}
+            >
                 <View className="flex-row items-center justify-between">
                     <View>
-                        <Text className="text-2xl font-bold text-[#7A5C47]">TripTogether</Text>
-                        <Text className="text-sm text-[#7A6F65]">Group travel made simple</Text>
+                        <Text
+                            className="text-2xl font-bold tracking-tight"
+                            style={{ color: theme.primary }}
+                        >
+                            TripTogether
+                        </Text>
+                        <Text
+                            className="text-xs mt-1 font-medium"
+                            style={{ color: theme.mutedForeground }}
+                        >
+                            Group travel made simple
+                        </Text>
                     </View>
 
                     {/* Avatar Button */}
                     <Pressable
                         onPress={() => setMenuVisible(true)}
-                        className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7A5C47]/20 to-[#5B8C85]/20 items-center justify-center border-2 border-[#7A5C47]"
+                        className="w-12 h-12 rounded-full items-center justify-center border-2"
+                        style={{
+                            backgroundColor: `${theme.primary}15`,
+                            borderColor: theme.primary,
+                        }}
                     >
                         {loading ? (
-                            <ActivityIndicator size="small" color="#7A5C47" />
+                            <ActivityIndicator size="small" color={theme.primary} />
                         ) : (
-                            <Text className="text-[#7A5C47] font-bold text-base">
+                            <Text
+                                className="font-bold text-base"
+                                style={{ color: theme.primary }}
+                            >
                                 {getInitials()}
                             </Text>
                         )}
@@ -83,22 +105,47 @@ export default function Header() {
                 onRequestClose={() => setMenuVisible(false)}
             >
                 <Pressable
-                    className="flex-1 bg-black/50"
+                    className="flex-1"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
                     onPress={() => setMenuVisible(false)}
                 >
-                    <View className="absolute top-16 right-4 bg-[#FAF8F3] rounded-xl border-2 border-[#7A5C47] p-2 min-w-[240px] shadow-lg">
+                    <View
+                        className="absolute top-16 right-4 rounded-xl border-2 p-2 min-w-[240px]"
+                        style={{
+                            backgroundColor: theme.card,
+                            borderColor: theme.primary,
+                            ...shadows.retro,
+                        }}
+                    >
                         {/* User Info */}
-                        <View className="px-3 py-3 border-b-2 border-[#D4CCC0]">
-                            <Text className="text-base font-bold text-[#3D3530]">
+                        <View
+                            className="px-3 py-3 border-b-2"
+                            style={{ borderBottomColor: theme.border }}
+                        >
+                            <Text
+                                className="text-base font-bold"
+                                style={{ color: theme.foreground }}
+                            >
                                 {user?.username || 'User'}
                             </Text>
-                            <Text className="text-sm text-[#7A6F65]">
+                            <Text
+                                className="text-sm"
+                                style={{ color: theme.mutedForeground }}
+                            >
                                 {user?.email || 'email@example.com'}
                             </Text>
                             {user?.isEmailVerified && (
                                 <View className="flex-row items-center gap-1 mt-1">
-                                    <View className="w-2 h-2 rounded-full bg-[#6B8E4E]" />
-                                    <Text className="text-xs text-[#6B8E4E]">Verified</Text>
+                                    <View
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: theme.accent }}
+                                    />
+                                    <Text
+                                        className="text-xs"
+                                        style={{ color: theme.accent }}
+                                    >
+                                        Verified
+                                    </Text>
                                 </View>
                             )}
                         </View>
@@ -106,60 +153,67 @@ export default function Header() {
                         {/* Menu Items */}
                         <View className="py-1">
                             <Pressable
-                                className="flex-row items-center gap-3 px-3 py-3 active:bg-[#7A5C47]/10 rounded-lg"
+                                className="flex-row items-center gap-3 px-3 py-3 rounded-lg active:opacity-70"
                                 onPress={() => {
                                     setMenuVisible(false);
-                                    // TODO: Navigate to profile
+                                    router.push('/profile');
                                 }}
                             >
-                                <User size={20} color="#7A5C47" />
-                                <Text className="text-base text-[#3D3530]">Profile</Text>
+                                <User size={20} color={theme.primary} />
+                                <Text style={{ color: theme.foreground }} className="text-base">
+                                    Profile
+                                </Text>
                             </Pressable>
 
                             <Pressable
-                                className="flex-row items-center gap-3 px-3 py-3 active:bg-[#7A5C47]/10 rounded-lg"
-                                onPress={() => {
-                                    setMenuVisible(false);
-                                    // TODO: Navigate to settings
-                                }}
+                                className="flex-row items-center gap-3 px-3 py-3 rounded-lg active:opacity-70"
+                                onPress={() => setMenuVisible(false)}
                             >
-                                <Settings size={20} color="#7A5C47" />
-                                <Text className="text-base text-[#3D3530]">Settings</Text>
+                                <Settings size={20} color={theme.primary} />
+                                <Text style={{ color: theme.foreground }} className="text-base">
+                                    Settings
+                                </Text>
                             </Pressable>
 
                             <Pressable
-                                className="flex-row items-center gap-3 px-3 py-3 active:bg-[#7A5C47]/10 rounded-lg"
-                                onPress={() => {
-                                    setMenuVisible(false);
-                                    // TODO: Navigate to notifications
-                                }}
+                                className="flex-row items-center gap-3 px-3 py-3 rounded-lg active:opacity-70"
+                                onPress={() => setMenuVisible(false)}
                             >
-                                <Bell size={20} color="#7A5C47" />
-                                <Text className="text-base text-[#3D3530]">Notifications</Text>
+                                <Bell size={20} color={theme.primary} />
+                                <Text style={{ color: theme.foreground }} className="text-base">
+                                    Notifications
+                                </Text>
                             </Pressable>
 
                             <Pressable
-                                className="flex-row items-center gap-3 px-3 py-3 active:bg-[#7A5C47]/10 rounded-lg"
-                                onPress={() => {
-                                    setMenuVisible(false);
-                                    // TODO: Navigate to help
-                                }}
+                                className="flex-row items-center gap-3 px-3 py-3 rounded-lg active:opacity-70"
+                                onPress={() => setMenuVisible(false)}
                             >
-                                <HelpCircle size={20} color="#7A5C47" />
-                                <Text className="text-base text-[#3D3530]">Help & Support</Text>
+                                <HelpCircle size={20} color={theme.primary} />
+                                <Text style={{ color: theme.foreground }} className="text-base">
+                                    Help & Support
+                                </Text>
                             </Pressable>
                         </View>
 
                         {/* Divider */}
-                        <View className="h-[2px] bg-[#D4CCC0] my-1" />
+                        <View
+                            className="h-[2px] my-1"
+                            style={{ backgroundColor: theme.border }}
+                        />
 
                         {/* Logout */}
                         <Pressable
-                            className="flex-row items-center gap-3 px-3 py-3 active:bg-[#A85442]/10 rounded-lg"
+                            className="flex-row items-center gap-3 px-3 py-3 rounded-lg active:opacity-70"
                             onPress={handleLogout}
                         >
-                            <LogOut size={20} color="#A85442" />
-                            <Text className="text-base text-[#A85442] font-semibold">Logout</Text>
+                            <LogOut size={20} color={theme.destructive} />
+                            <Text
+                                className="text-base font-semibold"
+                                style={{ color: theme.destructive }}
+                            >
+                                Logout
+                            </Text>
                         </Pressable>
                     </View>
                 </Pressable>
