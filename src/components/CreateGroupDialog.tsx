@@ -6,6 +6,9 @@ import {
     Pressable,
     Modal,
     ActivityIndicator,
+    StyleSheet,
+    ViewStyle,
+    StyleProp,
 } from 'react-native';
 import { X, Users } from 'lucide-react-native';
 import { theme, shadows, fonts } from '../constants/theme';
@@ -43,73 +46,67 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
             onRequestClose={onClose}
         >
             <Pressable
-                className="flex-1 bg-black/50 justify-center items-center px-6"
+                style={styles.backdrop}
                 onPress={onClose}
             >
                 <Pressable
                     onPress={(e) => e.stopPropagation()}
-                    className="w-full max-w-md"
+                    style={styles.dialogContainer}
                 >
-                    <View
-                        className="bg-card rounded-xl border-2 border-primary p-6"
-                        style={shadows.retro}
-                    >
+                    <View style={[styles.dialog, shadows.retro]}>
                         {/* Header */}
-                        <View className="flex-row items-center justify-between mb-4">
-                            <View className="flex-row items-center gap-2">
-                                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
+                        <View style={styles.header}>
+                            <View style={styles.headerLeft}>
+                                <View style={styles.iconContainer}>
                                     <Users size={20} color={theme.primary} />
                                 </View>
-                                <Text className="text-xl font-bold text-foreground" style={{ fontFamily: fonts.bold }}>
-                                    Create Group
-                                </Text>
+                                <Text style={styles.title}>Create Group</Text>
                             </View>
                             <Pressable
                                 onPress={onClose}
-                                className="w-8 h-8 rounded-full bg-muted items-center justify-center"
+                                style={styles.closeButton}
                             >
                                 <X size={18} color={theme.mutedForeground} />
                             </Pressable>
                         </View>
 
                         {/* Input */}
-                        <View className="mb-4">
-                            <Text className="text-sm text-muted-foreground font-medium mb-2" style={{ fontFamily: fonts.medium }}>
-                                Group Name
-                            </Text>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Group Name</Text>
                             <TextInput
-                                className="bg-input border-2 border-border rounded-lg px-4 py-3 text-base text-foreground"
+                                style={styles.input}
                                 placeholder="Enter group name..."
                                 placeholderTextColor={theme.mutedForeground}
                                 value={groupName}
                                 onChangeText={setGroupName}
-                                style={{ fontFamily: fonts.regular }}
                                 autoFocus
                             />
                         </View>
 
                         {/* Actions */}
-                        <View className="flex-row gap-3">
+                        <View style={styles.actions}>
                             <Pressable
                                 onPress={onClose}
-                                className="flex-1 py-3 rounded-lg border-2 border-border items-center"
+                                style={({ pressed }) => ([
+                                    styles.cancelButton,
+                                    pressed && styles.buttonPressed,
+                                ].filter(Boolean) as StyleProp<ViewStyle>)}
                             >
-                                <Text className="font-semibold text-muted-foreground" style={{ fontFamily: fonts.semiBold }}>
-                                    Cancel
-                                </Text>
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
                             </Pressable>
                             <Pressable
                                 onPress={handleCreate}
                                 disabled={loading || !groupName.trim()}
-                                className={`flex-1 py-3 rounded-lg bg-primary items-center ${(!groupName.trim() || loading) ? 'opacity-50' : ''
-                                    }`}
+                                style={({ pressed }) => ([
+                                    styles.createButton,
+                                    (!groupName.trim() || loading) && styles.createButtonDisabled,
+                                    pressed && !loading && groupName.trim() && styles.buttonPressed,
+                                ].filter(Boolean) as StyleProp<ViewStyle>)}
                             >
                                 {loading ? (
                                     <ActivityIndicator color={theme.primaryForeground} size="small" />
                                 ) : (
-                                    <Text className="font-semibold text-primary-foreground" style={{ fontFamily: fonts.semiBold }}>
-                                        Create
-                                    </Text>
+                                    <Text style={styles.createButtonText}>Create</Text>
                                 )}
                             </Pressable>
                         </View>
@@ -119,3 +116,112 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
         </Modal>
     );
 }
+
+const styles = StyleSheet.create({
+    backdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+    dialogContainer: {
+        width: '100%',
+        maxWidth: 448,
+    },
+    dialog: {
+        backgroundColor: theme.card,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: theme.primary,
+        padding: 24,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: `${theme.primary}10`,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    title: {
+        fontSize: 20,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+    },
+    closeButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: theme.muted,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    inputContainer: {
+        marginBottom: 16,
+    },
+    label: {
+        fontSize: 14,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+        marginBottom: 8,
+    },
+    input: {
+        backgroundColor: theme.input,
+        borderWidth: 2,
+        borderColor: theme.border,
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        fontFamily: fonts.regular,
+        color: theme.foreground,
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cancelButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: theme.border,
+        alignItems: 'center',
+        backgroundColor: theme.card,
+    },
+    cancelButtonText: {
+        fontFamily: fonts.semiBold,
+        color: theme.mutedForeground,
+        fontSize: 16,
+    },
+    createButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        backgroundColor: theme.primary,
+        alignItems: 'center',
+    },
+    createButtonDisabled: {
+        opacity: 0.5,
+    },
+    createButtonText: {
+        fontFamily: fonts.semiBold,
+        color: theme.primaryForeground,
+        fontSize: 16,
+    },
+    buttonPressed: {
+        opacity: 0.7,
+    },
+});
