@@ -8,7 +8,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { X, Users } from 'lucide-react-native';
-import { theme, shadows } from '../constants/theme';
+import { theme, shadows, fonts } from '../constants/theme';
 
 interface CreateGroupDialogProps {
     visible: boolean;
@@ -60,7 +60,7 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
                                 <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
                                     <Users size={20} color={theme.primary} />
                                 </View>
-                                <Text className="text-xl font-bold text-foreground">
+                                <Text className="text-xl font-bold text-foreground" style={{ fontFamily: fonts.bold }}>
                                     Create Group
                                 </Text>
                             </View>
@@ -74,7 +74,7 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
 
                         {/* Input */}
                         <View className="mb-4">
-                            <Text className="text-sm text-muted-foreground font-medium mb-2">
+                            <Text className="text-sm text-muted-foreground font-medium mb-2" style={{ fontFamily: fonts.medium }}>
                                 Group Name
                             </Text>
                             <TextInput
@@ -83,6 +83,7 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
                                 placeholderTextColor={theme.mutedForeground}
                                 value={groupName}
                                 onChangeText={setGroupName}
+                                style={{ fontFamily: fonts.regular }}
                                 autoFocus
                             />
                         </View>
@@ -93,7 +94,7 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
                                 onPress={onClose}
                                 className="flex-1 py-3 rounded-lg border-2 border-border items-center"
                             >
-                                <Text className="font-semibold text-muted-foreground">
+                                <Text className="font-semibold text-muted-foreground" style={{ fontFamily: fonts.semiBold }}>
                                     Cancel
                                 </Text>
                             </Pressable>
@@ -106,7 +107,7 @@ export default function CreateGroupDialog({ visible, onClose, onCreateGroup }: C
                                 {loading ? (
                                     <ActivityIndicator color={theme.primaryForeground} size="small" />
                                 ) : (
-                                    <Text className="font-semibold text-primary-foreground">
+                                    <Text className="font-semibold text-primary-foreground" style={{ fontFamily: fonts.semiBold }}>
                                         Create
                                     </Text>
                                 )}

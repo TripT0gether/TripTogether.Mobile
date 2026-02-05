@@ -14,7 +14,7 @@ import { authService } from '../../src/services/authService';
 import { showErrorToast, showSuccessToast } from '../../src/utils/toast';
 import { Mail, ArrowLeft, CheckCircle2, RefreshCw } from 'lucide-react-native';
 import RetroGrid from '../../src/components/RetroGrid';
-import { theme, shadows } from '../../src/constants/theme';
+import { theme, shadows, fonts } from '../../src/constants/theme';
 
 export default function VerifyOtpScreen() {
     const router = useRouter();

@@ -1,11 +1,32 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { ErrorBoundary } from 'react-error-boundary';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import Toast, { BaseToast, ErrorToast, InfoToast } from 'react-native-toast-message';
+import {
+  useFonts,
+  IBMPlexMono_400Regular,
+  IBMPlexMono_500Medium,
+  IBMPlexMono_600SemiBold,
+  IBMPlexMono_700Bold,
+} from '@expo-google-fonts/ibm-plex-mono';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep splash screen visible while loading fonts
+SplashScreen.preventAutoHideAsync();
+
+// Theme colors
+const colors = {
+  background: '#F9F6F0',
+  primary: '#A0462D',
+  secondary: '#7B9B7D',
+  foreground: '#2B1810',
+  mutedForeground: '#6B5D52',
+  card: '#FFFCF7',
+};
 
 // Error fallback component
-function ErrorFallback({ error, resetErrorBoundary }: any) {
+function ErrorFallback({ error }: any) {
   return (
     <View style={styles.errorContainer}>
       <Text style={styles.errorTitle}>Something went wrong</Text>
@@ -14,28 +35,28 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
   );
 }
 
-// Custom Toast Configuration with Retro Styling
+// Custom Toast Configuration
 const toastConfig = {
   success: (props: any) => (
     <BaseToast
       {...props}
       style={{
-        borderLeftColor: '#6B8E4E',
+        borderLeftColor: '#5A8F5E',
         borderLeftWidth: 6,
-        backgroundColor: '#FAF8F3',
+        backgroundColor: colors.card,
         borderWidth: 2,
-        borderColor: '#6B8E4E',
+        borderColor: '#5A8F5E',
         borderRadius: 8,
       }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{
         fontSize: 16,
         fontWeight: '700',
-        color: '#3D3530',
+        color: colors.foreground,
       }}
       text2Style={{
         fontSize: 14,
-        color: '#7A6F65',
+        color: colors.mutedForeground,
       }}
     />
   ),
@@ -43,22 +64,22 @@ const toastConfig = {
     <ErrorToast
       {...props}
       style={{
-        borderLeftColor: '#A85442',
+        borderLeftColor: '#C84B3E',
         borderLeftWidth: 6,
-        backgroundColor: '#FAF8F3',
+        backgroundColor: colors.card,
         borderWidth: 2,
-        borderColor: '#A85442',
+        borderColor: '#C84B3E',
         borderRadius: 8,
       }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{
         fontSize: 16,
         fontWeight: '700',
-        color: '#3D3530',
+        color: colors.foreground,
       }}
       text2Style={{
         fontSize: 14,
-        color: '#7A6F65',
+        color: colors.mutedForeground,
       }}
     />
   ),
@@ -68,7 +89,7 @@ const toastConfig = {
       style={{
         borderLeftColor: '#5B7F8A',
         borderLeftWidth: 6,
-        backgroundColor: '#FAF8F3',
+        backgroundColor: colors.card,
         borderWidth: 2,
         borderColor: '#5B7F8A',
         borderRadius: 8,
@@ -77,27 +98,47 @@ const toastConfig = {
       text1Style={{
         fontSize: 16,
         fontWeight: '700',
-        color: '#3D3530',
+        color: colors.foreground,
       }}
       text2Style={{
         fontSize: 14,
-        color: '#7A6F65',
+        color: colors.mutedForeground,
       }}
     />
   ),
 };
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    IBMPlexMono_400Regular,
+    IBMPlexMono_500Medium,
+    IBMPlexMono_600SemiBold,
+    IBMPlexMono_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      // Hide splash screen once fonts are loaded (or if there's an error)
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  // Show loading screen while fonts are loading
+  if (!fontsLoaded && !fontError) {
+    return null; // Splash screen will be visible
+  }
+
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#FAF8F3',
+            backgroundColor: colors.card,
           },
-          headerTintColor: '#7A5C47',
+          headerTintColor: colors.primary,
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontFamily: fontsLoaded ? 'IBMPlexMono_700Bold' : undefined,
+            fontWeight: '700',
           },
           headerShadowVisible: false,
           gestureEnabled: true,
@@ -140,7 +181,6 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-      {/* Toast component */}
       <Toast config={toastConfig} />
     </ErrorBoundary>
   );
@@ -152,17 +192,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#A85442',
+    color: '#C84B3E',
     marginBottom: 10,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#7A6F65',
+    color: colors.mutedForeground,
     textAlign: 'center',
   },
 });

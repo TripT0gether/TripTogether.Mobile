@@ -5,7 +5,7 @@ import { User, Settings, LogOut, Bell, HelpCircle } from 'lucide-react-native';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
-import { theme, shadows } from '../constants/theme';
+import { theme, shadows, fonts } from '../constants/theme';
 import type { User as UserType } from '../types/user.types';
 
 export default function Header() {
@@ -62,13 +62,13 @@ export default function Header() {
                     <View>
                         <Text
                             className="text-2xl font-bold tracking-tight"
-                            style={{ color: theme.primary }}
+                            style={{ color: theme.primary, fontFamily: fonts.bold }}
                         >
                             TripTogether
                         </Text>
                         <Text
                             className="text-xs mt-1 font-medium"
-                            style={{ color: theme.mutedForeground }}
+                            style={{ color: theme.mutedForeground, fontFamily: fonts.medium }}
                         >
                             Group travel made simple
                         </Text>
@@ -88,7 +88,7 @@ export default function Header() {
                         ) : (
                             <Text
                                 className="font-bold text-base"
-                                style={{ color: theme.primary }}
+                                style={{ color: theme.primary, fontFamily: fonts.bold }}
                             >
                                 {getInitials()}
                             </Text>
@@ -124,13 +124,13 @@ export default function Header() {
                         >
                             <Text
                                 className="text-base font-bold"
-                                style={{ color: theme.foreground }}
+                                style={{ color: theme.foreground, fontFamily: fonts.bold }}
                             >
                                 {user?.username || 'User'}
                             </Text>
                             <Text
                                 className="text-sm"
-                                style={{ color: theme.mutedForeground }}
+                                style={{ color: theme.mutedForeground, fontFamily: fonts.regular }}
                             >
                                 {user?.email || 'email@example.com'}
                             </Text>
@@ -142,7 +142,7 @@ export default function Header() {
                                     />
                                     <Text
                                         className="text-xs"
-                                        style={{ color: theme.accent }}
+                                        style={{ color: theme.accent, fontFamily: fonts.regular }}
                                     >
                                         Verified
                                     </Text>
@@ -160,7 +160,7 @@ export default function Header() {
                                 }}
                             >
                                 <User size={20} color={theme.primary} />
-                                <Text style={{ color: theme.foreground }} className="text-base">
+                                <Text style={{ color: theme.foreground, fontFamily: fonts.regular }} className="text-base">
                                     Profile
                                 </Text>
                             </Pressable>
@@ -170,7 +170,7 @@ export default function Header() {
                                 onPress={() => setMenuVisible(false)}
                             >
                                 <Settings size={20} color={theme.primary} />
-                                <Text style={{ color: theme.foreground }} className="text-base">
+                                <Text style={{ color: theme.foreground, fontFamily: fonts.regular }} className="text-base">
                                     Settings
                                 </Text>
                             </Pressable>
@@ -180,7 +180,7 @@ export default function Header() {
                                 onPress={() => setMenuVisible(false)}
                             >
                                 <Bell size={20} color={theme.primary} />
-                                <Text style={{ color: theme.foreground }} className="text-base">
+                                <Text style={{ color: theme.foreground, fontFamily: fonts.regular }} className="text-base">
                                     Notifications
                                 </Text>
                             </Pressable>
@@ -190,7 +190,7 @@ export default function Header() {
                                 onPress={() => setMenuVisible(false)}
                             >
                                 <HelpCircle size={20} color={theme.primary} />
-                                <Text style={{ color: theme.foreground }} className="text-base">
+                                <Text style={{ color: theme.foreground, fontFamily: fonts.regular }} className="text-base">
                                     Help & Support
                                 </Text>
                             </Pressable>
@@ -210,7 +210,7 @@ export default function Header() {
                             <LogOut size={20} color={theme.destructive} />
                             <Text
                                 className="text-base font-semibold"
-                                style={{ color: theme.destructive }}
+                                style={{ color: theme.destructive, fontFamily: fonts.semiBold }}
                             >
                                 Logout
                             </Text>

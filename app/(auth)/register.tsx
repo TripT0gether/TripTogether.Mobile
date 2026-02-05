@@ -15,7 +15,7 @@ import { authService } from '../../src/services/authService';
 import { showErrorToast, showSuccessToast } from '../../src/utils/toast';
 import { Mail, User, Lock, Eye, EyeOff, ArrowLeft, Check, X, ChevronRight } from 'lucide-react-native';
 import RetroGrid from '../../src/components/RetroGrid';
-import { theme, shadows } from '../../src/constants/theme';
+import { theme, shadows, fonts } from '../../src/constants/theme';
 
 // Step configuration
 const STEPS = [

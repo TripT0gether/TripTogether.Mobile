@@ -8,13 +8,14 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
+    StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react-native';
 import { authService } from '../../src/services/authService';
 import { showErrorToast, showSuccessToast } from '../../src/utils/toast';
 import RetroGrid from '../../src/components/RetroGrid';
-import { theme, shadows } from '../../src/constants/theme';
+import { theme, shadows, fonts } from '../../src/constants/theme';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -69,13 +70,10 @@ export default function LoginScreen() {
                 >
                     {/* Header */}
                     <View className="items-center mb-8">
-                        <Text
-                            className="text-3xl font-bold tracking-tight mb-1"
-                            style={{ color: theme.primary }}
-                        >
+                        <Text style={styles.appTitle}>
                             TripTogether
                         </Text>
-                        <Text style={{ color: theme.mutedForeground }} className="text-sm">
+                        <Text style={styles.appSubtitle}>
                             Group travel made simple
                         </Text>
                     </View>
@@ -96,26 +94,17 @@ export default function LoginScreen() {
                             >
                                 <LogIn size={20} color={theme.primary} />
                             </View>
-                            <Text
-                                className="text-xl font-bold"
-                                style={{ color: theme.foreground }}
-                            >
+                            <Text style={styles.cardTitle}>
                                 Welcome Back
                             </Text>
                         </View>
-                        <Text
-                            className="text-sm mb-6"
-                            style={{ color: theme.mutedForeground }}
-                        >
+                        <Text style={styles.cardSubtitle}>
                             Sign in to continue your adventure
                         </Text>
 
                         {/* Email Input */}
                         <View className="mb-4">
-                            <Text
-                                className="text-sm font-medium mb-2"
-                                style={{ color: theme.mutedForeground }}
-                            >
+                            <Text style={styles.inputLabel}>
                                 Email
                             </Text>
                             <View
@@ -128,7 +117,7 @@ export default function LoginScreen() {
                                 <Mail size={18} color={theme.mutedForeground} />
                                 <TextInput
                                     className="flex-1 py-3 px-3 text-base"
-                                    style={{ color: theme.foreground }}
+                                    style={styles.input}
                                     placeholder="your@email.com"
                                     placeholderTextColor={theme.mutedForeground}
                                     value={email}
@@ -142,10 +131,7 @@ export default function LoginScreen() {
 
                         {/* Password Input */}
                         <View className="mb-6">
-                            <Text
-                                className="text-sm font-medium mb-2"
-                                style={{ color: theme.mutedForeground }}
-                            >
+                            <Text style={styles.inputLabel}>
                                 Password
                             </Text>
                             <View
@@ -158,7 +144,7 @@ export default function LoginScreen() {
                                 <Lock size={18} color={theme.mutedForeground} />
                                 <TextInput
                                     className="flex-1 py-3 px-3 text-base"
-                                    style={{ color: theme.foreground }}
+                                    style={styles.input}
                                     placeholder="Enter password"
                                     placeholderTextColor={theme.mutedForeground}
                                     value={password}
@@ -186,21 +172,16 @@ export default function LoginScreen() {
                             {loading ? (
                                 <ActivityIndicator color={theme.primaryForeground} />
                             ) : (
-                                <>
-                                    <Text
-                                        className="font-bold text-base"
-                                        style={{ color: theme.primaryForeground }}
-                                    >
-                                        Sign In
-                                    </Text>
-                                </>
+                                <Text style={styles.buttonText}>
+                                    Sign In
+                                </Text>
                             )}
                         </Pressable>
                     </View>
 
                     {/* Register Link */}
                     <View className="items-center">
-                        <Text style={{ color: theme.mutedForeground }} className="text-sm">
+                        <Text style={styles.linkSubtext}>
                             Don't have an account?{' '}
                         </Text>
                         <Pressable
@@ -208,10 +189,7 @@ export default function LoginScreen() {
                             disabled={loading}
                             className="mt-1"
                         >
-                            <Text
-                                className="font-bold text-base"
-                                style={{ color: theme.primary }}
-                            >
+                            <Text style={styles.linkText}>
                                 Create one
                             </Text>
                         </Pressable>
@@ -221,3 +199,54 @@ export default function LoginScreen() {
         </RetroGrid>
     );
 }
+
+const styles = StyleSheet.create({
+    appTitle: {
+        fontSize: 30,
+        fontFamily: fonts.bold,
+        color: theme.primary,
+        letterSpacing: -0.5,
+        marginBottom: 4,
+    },
+    appSubtitle: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+    },
+    cardTitle: {
+        fontSize: 20,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+    },
+    cardSubtitle: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+        marginBottom: 24,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+        marginBottom: 8,
+    },
+    input: {
+        color: theme.foreground,
+        fontFamily: fonts.regular,
+    },
+    buttonText: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
+        color: theme.primaryForeground,
+    },
+    linkSubtext: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+    },
+    linkText: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
+        color: theme.primary,
+    },
+});

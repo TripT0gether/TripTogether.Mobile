@@ -93,3 +93,11 @@ export const radius = {
     '2xl': 16,
     full: 9999,
 };
+
+// Font families - IBM Plex Mono
+export const fonts = {
+    regular: 'IBMPlexMono_400Regular',
+    medium: 'IBMPlexMono_500Medium',
+    semiBold: 'IBMPlexMono_600SemiBold',
+    bold: 'IBMPlexMono_700Bold',
+};

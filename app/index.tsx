@@ -1,51 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+    View,
+    Text,
+    Pressable,
+    ScrollView,
+    ActivityIndicator,
+    TextInput,
+    RefreshControl,
+    StyleSheet,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, BookOpen, Users, Camera, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react-native';
+import {
+    Plus,
+    Users,
+    ArrowRight,
+    Search,
+    X,
+    ChevronLeft,
+    ChevronRight,
+} from 'lucide-react-native';
 import { authService } from '../src/services/authService';
+import { groupService } from '../src/services/groupService';
+import { Group, PaginatedGroupsResponse } from '../src/types/group.types';
 import Header from '../src/components/Header';
 import RetroGrid from '../src/components/RetroGrid';
 import CreateGroupDialog from '../src/components/CreateGroupDialog';
-import { theme, shadows } from '../src/constants/theme';
+import { theme, shadows, fonts, radius } from '../src/constants/theme';
 
-// Mock data for demonstration
-const mockGroups = [
-    {
-        id: '1',
-        name: 'Lisbon Friends',
-        members: 5,
-        youOwe: 45.5,
-        youAreOwed: 20.0,
-        trips: 2,
-    },
-    {
-        id: '2',
-        name: 'Tokyo Squad',
-        members: 4,
-        youOwe: 0,
-        youAreOwed: 85.0,
-        trips: 1,
-    },
-    {
-        id: '3',
-        name: 'Berlin Crew',
-        members: 6,
-        youOwe: 30.0,
-        youAreOwed: 30.0,
-        trips: 3,
-    },
-];
+const PAGE_SIZE = 10;
 
 export default function IndexScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [groups, setGroups] = useState(mockGroups);
+
+    // Groups data
+    const [groups, setGroups] = useState<Group[]>([]);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        hasNext: false,
+        hasPrevious: false,
+    });
+
+    // Search state
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         checkAuth();
     }, []);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchGroups(1, searchQuery);
+        }
+    }, [isAuthenticated, searchQuery]);
 
     const checkAuth = async () => {
         try {
@@ -63,22 +76,69 @@ export default function IndexScreen() {
         }
     };
 
-    const handleCreateGroup = (name: string) => {
-        const newGroup = {
-            id: String(groups.length + 1),
-            name,
-            members: 1,
-            youOwe: 0,
-            youAreOwed: 0,
-            trips: 0,
-        };
-        setGroups([...groups, newGroup]);
-        setShowCreateDialog(false);
+    const fetchGroups = async (page: number, search?: string) => {
+        try {
+            const response: PaginatedGroupsResponse = await groupService.getMyGroups({
+                pageNumber: page,
+                pageSize: PAGE_SIZE,
+                searchTerm: search || undefined,
+                sortBy: 'createdAt',
+                ascending: false,
+            });
+
+            setGroups(response.items);
+            setPagination({
+                currentPage: response.currentPage,
+                totalPages: response.totalPages,
+                totalCount: response.totalCount,
+                hasNext: response.hasNext,
+                hasPrevious: response.hasPrevious,
+            });
+        } catch (error) {
+            console.error('Failed to fetch groups:', error);
+        }
+    };
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchGroups(1, searchQuery);
+        setRefreshing(false);
+    }, [searchQuery]);
+
+    const handleSearch = () => {
+        setSearchQuery(searchTerm);
+    };
+
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        setSearchQuery('');
+    };
+
+    const handleNextPage = () => {
+        if (pagination.hasNext) {
+            fetchGroups(pagination.currentPage + 1, searchQuery);
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (pagination.hasPrevious) {
+            fetchGroups(pagination.currentPage - 1, searchQuery);
+        }
+    };
+
+    const handleCreateGroup = async (name: string) => {
+        try {
+            await groupService.createGroup({ name });
+            setShowCreateDialog(false);
+            handleRefresh();
+        } catch (error) {
+            console.error('Failed to create group:', error);
+        }
     };
 
     if (loading) {
         return (
-            <View className="flex-1 items-center justify-center" style={{ backgroundColor: theme.background }}>
+            <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.primary} />
             </View>
         );
@@ -90,139 +150,156 @@ export default function IndexScreen() {
 
     return (
         <RetroGrid>
-            {/* Header with Avatar */}
             <Header />
 
-            <ScrollView className="flex-1 px-4 py-6" contentContainerStyle={{ paddingBottom: 80 }}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={theme.primary}
+                    />
+                }
+            >
                 {/* Hero Card */}
-                <View
-                    className="p-6 mb-6 rounded-xl border-2"
-                    style={{
-                        backgroundColor: theme.card,
-                        borderColor: theme.primary,
-                        ...shadows.retro,
-                    }}
-                >
-                    <Text className="text-xl font-bold mb-2" style={{ color: theme.foreground }}>
-                        Start Your Adventure
-                    </Text>
-                    <Text className="text-sm mb-4" style={{ color: theme.mutedForeground }}>
+                <View style={[styles.heroCard, shadows.retro]}>
+                    <Text style={styles.heroTitle}>Start Your Adventure</Text>
+                    <Text style={styles.heroSubtitle}>
                         Create a group and manage trips, expenses, and memories together
                     </Text>
                     <Pressable
                         onPress={() => setShowCreateDialog(true)}
-                        className="flex-row items-center justify-center py-4 rounded-lg"
-                        style={{ backgroundColor: theme.primary }}
+                        style={({ pressed }) => [
+                            styles.createButton,
+                            pressed && styles.createButtonPressed,
+                        ]}
                     >
                         <Plus size={18} color={theme.primaryForeground} />
-                        <Text className="font-bold ml-2" style={{ color: theme.primaryForeground }}>
-                            Create New Group
-                        </Text>
+                        <Text style={styles.createButtonText}>Create New Group</Text>
                     </Pressable>
                 </View>
 
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchInputWrapper}>
+                        <Search size={16} color={theme.mutedForeground} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search groups..."
+                            placeholderTextColor={theme.mutedForeground}
+                            value={searchTerm}
+                            onChangeText={setSearchTerm}
+                            onSubmitEditing={handleSearch}
+                            returnKeyType="search"
+                        />
+                        {searchTerm.length > 0 && (
+                            <Pressable onPress={handleClearSearch} hitSlop={8}>
+                                <X size={16} color={theme.mutedForeground} />
+                            </Pressable>
+                        )}
+                    </View>
+                </View>
+
+                {/* Groups Header */}
+                <View style={styles.groupsHeader}>
+                    <Text style={styles.groupsTitle}>Your Groups</Text>
+                    {pagination.totalCount > 0 && (
+                        <Text style={styles.groupsCount}>
+                            {pagination.totalCount} {pagination.totalCount === 1 ? 'group' : 'groups'}
+                        </Text>
+                    )}
+                </View>
+
                 {/* Groups List */}
-                <Text className="text-lg font-bold mb-3" style={{ color: theme.foreground }}>
-                    Your Groups
-                </Text>
-
-                <View className="gap-3">
-                    {groups.map((group, index) => {
-                        const netBalance = group.youAreOwed - group.youOwe;
-                        const isSettled = netBalance === 0 && group.youOwe === 0;
-
-                        return (
+                {groups.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Users size={48} color={theme.muted} />
+                        <Text style={styles.emptyTitle}>No groups yet</Text>
+                        <Text style={styles.emptySubtitle}>
+                            {searchQuery
+                                ? 'No groups match your search'
+                                : 'Create your first group to start planning trips!'}
+                        </Text>
+                    </View>
+                ) : (
+                    <View style={styles.groupsList}>
+                        {groups.map((group, index) => (
                             <Pressable
                                 key={group.id}
                                 onPress={() => router.push(`/group/${group.id}`)}
-                                className="rounded-xl border-2 p-4"
-                                style={({ pressed }) => ({
-                                    backgroundColor: theme.card,
-                                    borderColor: pressed ? theme.primary : theme.border,
-                                    transform: [{ translateY: pressed ? 2 : 0 }],
-                                    ...shadows.retroSm,
-                                })}
+                                style={({ pressed }) => [
+                                    styles.groupCard,
+                                    shadows.retroSm,
+                                    pressed && styles.groupCardPressed,
+                                ]}
                             >
                                 {/* Top Row */}
-                                <View className="flex-row items-start justify-between mb-3">
-                                    <View className="flex-1">
-                                        <Text className="text-base font-bold" style={{ color: theme.foreground }}>
-                                            {group.name}
-                                        </Text>
-                                        <View className="flex-row items-center gap-3 mt-1.5">
-                                            <View className="flex-row items-center gap-1">
+                                <View style={styles.groupCardTop}>
+                                    <View style={styles.groupInfo}>
+                                        <Text style={styles.groupName}>{group.name}</Text>
+                                        <View style={styles.groupMeta}>
+                                            <View style={styles.memberBadge}>
                                                 <Users size={14} color={theme.mutedForeground} />
-                                                <Text className="text-xs font-medium" style={{ color: theme.mutedForeground }}>
-                                                    {group.members}
-                                                </Text>
+                                                <Text style={styles.memberCount}>{group.memberCount}</Text>
                                             </View>
-                                            <Text className="text-xs font-medium" style={{ color: theme.mutedForeground }}>
-                                                {group.trips} {group.trips === 1 ? 'trip' : 'trips'}
-                                            </Text>
                                         </View>
                                     </View>
-
-                                    {/* Balance */}
-                                    <View className="items-end">
-                                        <Text className="text-xs font-medium mb-0.5" style={{ color: theme.mutedForeground }}>
-                                            Balance
-                                        </Text>
-                                        {isSettled ? (
-                                            <Text className="text-sm font-bold" style={{ color: theme.mutedForeground }}>
-                                                Settled
-                                            </Text>
-                                        ) : netBalance > 0 ? (
-                                            <View className="flex-row items-center gap-1">
-                                                <TrendingUp size={14} color={theme.accent} />
-                                                <Text className="text-lg font-bold" style={{ color: theme.accent }}>
-                                                    +${netBalance.toFixed(2)}
-                                                </Text>
-                                            </View>
-                                        ) : (
-                                            <View className="flex-row items-center gap-1">
-                                                <TrendingDown size={14} color={theme.destructive} />
-                                                <Text className="text-lg font-bold" style={{ color: theme.destructive }}>
-                                                    -${Math.abs(netBalance).toFixed(2)}
-                                                </Text>
-                                            </View>
-                                        )}
+                                    <View style={styles.arrowContainer}>
+                                        <ArrowRight size={20} color={theme.mutedForeground} />
                                     </View>
                                 </View>
 
-                                {/* Bottom Actions */}
-                                <View
-                                    className="flex-row gap-2 pt-3"
-                                    style={{ borderTopWidth: 1, borderTopColor: theme.border }}
-                                >
-                                    <View
-                                        className="flex-1 flex-row items-center justify-center gap-1.5 py-2 rounded"
-                                        style={{ backgroundColor: `${theme.muted}80` }}
-                                    >
-                                        <BookOpen size={14} color={theme.foreground} />
-                                        <Text className="text-xs font-semibold" style={{ color: theme.foreground }}>
-                                            Ledger
-                                        </Text>
-                                    </View>
-                                    <View
-                                        className="flex-1 flex-row items-center justify-center gap-1.5 py-2 rounded"
-                                        style={{ backgroundColor: `${theme.muted}80` }}
-                                    >
-                                        <Camera size={14} color={theme.foreground} />
-                                        <Text className="text-xs font-semibold" style={{ color: theme.foreground }}>
-                                            Gallery
-                                        </Text>
-                                    </View>
-                                    <View className="px-2 items-center justify-center">
-                                        <ArrowRight size={16} color={theme.mutedForeground} />
-                                    </View>
-                                </View>
+                                {/* Created Date */}
+                                <Text style={styles.createdAt}>
+                                    Created {new Date(group.createdAt).toLocaleDateString()}
+                                </Text>
                             </Pressable>
-                        );
-                    })}
-                </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
+                    <View style={styles.pagination}>
+                        <Pressable
+                            onPress={handlePrevPage}
+                            disabled={!pagination.hasPrevious}
+                            style={({ pressed }) => [
+                                styles.pageButton,
+                                !pagination.hasPrevious && styles.pageButtonDisabled,
+                                pressed && pagination.hasPrevious && styles.pageButtonPressed,
+                            ]}
+                        >
+                            <ChevronLeft
+                                size={20}
+                                color={pagination.hasPrevious ? theme.foreground : theme.muted}
+                            />
+                        </Pressable>
+
+                        <Text style={styles.pageText}>
+                            Page {pagination.currentPage} of {pagination.totalPages}
+                        </Text>
+
+                        <Pressable
+                            onPress={handleNextPage}
+                            disabled={!pagination.hasNext}
+                            style={({ pressed }) => [
+                                styles.pageButton,
+                                !pagination.hasNext && styles.pageButtonDisabled,
+                                pressed && pagination.hasNext && styles.pageButtonPressed,
+                            ]}
+                        >
+                            <ChevronRight
+                                size={20}
+                                color={pagination.hasNext ? theme.foreground : theme.muted}
+                            />
+                        </Pressable>
+                    </View>
+                )}
             </ScrollView>
 
-            {/* Create Group Dialog */}
             <CreateGroupDialog
                 visible={showCreateDialog}
                 onClose={() => setShowCreateDialog(false)}
@@ -231,3 +308,208 @@ export default function IndexScreen() {
         </RetroGrid>
     );
 }
+
+const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.background,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingHorizontal: 16,
+        paddingTop: 24,
+        paddingBottom: 100,
+    },
+
+    // Hero Card
+    heroCard: {
+        padding: 24,
+        marginBottom: 20,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.primary,
+        backgroundColor: theme.card,
+    },
+    heroTitle: {
+        fontSize: 22,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+        marginBottom: 8,
+    },
+    heroSubtitle: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+        marginBottom: 20,
+        lineHeight: 20,
+    },
+    createButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        borderRadius: radius.lg,
+        backgroundColor: theme.primary,
+    },
+    createButtonPressed: {
+        opacity: 0.9,
+        transform: [{ scale: 0.98 }],
+    },
+    createButtonText: {
+        fontFamily: fonts.bold,
+        fontSize: 16,
+        color: theme.primaryForeground,
+        marginLeft: 8,
+    },
+
+    // Search
+    searchContainer: {
+        marginBottom: 20,
+    },
+    searchInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: radius.lg,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.input,
+        gap: 10,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.foreground,
+        padding: 0,
+    },
+
+    // Groups Header
+    groupsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    groupsTitle: {
+        fontSize: 18,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+    },
+    groupsCount: {
+        fontSize: 12,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+    },
+
+    // Groups List
+    groupsList: {
+        gap: 12,
+    },
+    groupCard: {
+        padding: 16,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.card,
+    },
+    groupCardPressed: {
+        borderColor: theme.primary,
+        transform: [{ translateY: -2 }],
+    },
+    groupCardTop: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+    },
+    groupInfo: {
+        flex: 1,
+    },
+    groupName: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+        marginBottom: 6,
+    },
+    groupMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    memberBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    memberCount: {
+        fontSize: 13,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+    },
+    arrowContainer: {
+        padding: 4,
+    },
+    createdAt: {
+        fontSize: 12,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+        marginTop: 10,
+    },
+
+    // Empty State
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: 48,
+        paddingHorizontal: 24,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+
+    // Pagination
+    pagination: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 24,
+        gap: 16,
+    },
+    pageButton: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.lg,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.card,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pageButtonDisabled: {
+        opacity: 0.5,
+    },
+    pageButtonPressed: {
+        borderColor: theme.primary,
+        backgroundColor: theme.muted,
+    },
+    pageText: {
+        fontSize: 14,
+        fontFamily: fonts.medium,
+        color: theme.foreground,
+    },
+});
