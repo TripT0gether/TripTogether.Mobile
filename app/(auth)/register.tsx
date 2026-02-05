@@ -9,6 +9,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Animated,
+    StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService } from '../../src/services/authService';
@@ -146,10 +147,7 @@ export default function RegisterScreen() {
                         className="flex-row items-center mb-4"
                     >
                         <ArrowLeft size={24} color={theme.primary} />
-                        <Text
-                            className="font-semibold ml-2"
-                            style={{ color: theme.primary }}
-                        >
+                        <Text style={styles.backText}>
                             Back
                         </Text>
                     </Pressable>
@@ -178,16 +176,10 @@ export default function RegisterScreen() {
                             >
                                 <StepIcon size={40} color={theme.primary} />
                             </View>
-                            <Text
-                                className="text-2xl font-bold text-center"
-                                style={{ color: theme.foreground }}
-                            >
+                            <Text style={styles.stepTitle}>
                                 {STEPS[step].title}
                             </Text>
-                            <Text
-                                className="text-sm text-center mt-1"
-                                style={{ color: theme.mutedForeground }}
-                            >
+                            <Text style={styles.stepSubtitle}>
                                 {STEPS[step].subtitle}
                             </Text>
                         </View>
@@ -213,7 +205,7 @@ export default function RegisterScreen() {
                                     <Mail size={20} color={theme.mutedForeground} />
                                     <TextInput
                                         className="flex-1 py-4 px-3 text-lg"
-                                        style={{ color: theme.foreground }}
+                                        style={styles.input}
                                         placeholder="your@email.com"
                                         placeholderTextColor={theme.mutedForeground}
                                         value={email}
@@ -239,7 +231,7 @@ export default function RegisterScreen() {
                                         <User size={20} color={theme.mutedForeground} />
                                         <TextInput
                                             className="flex-1 py-4 px-3 text-lg"
-                                            style={{ color: theme.foreground }}
+                                            style={styles.input}
                                             placeholder="Choose a username"
                                             placeholderTextColor={theme.mutedForeground}
                                             value={username}
@@ -251,10 +243,7 @@ export default function RegisterScreen() {
                                     </View>
 
                                     <View className="mt-2">
-                                        <Text
-                                            className="text-sm font-semibold mb-3 text-center"
-                                            style={{ color: theme.mutedForeground }}
-                                        >
+                                        <Text style={styles.genderLabel}>
                                             I am a...
                                         </Text>
                                         <View className="flex-row gap-3">
@@ -267,10 +256,7 @@ export default function RegisterScreen() {
                                                 onPress={() => setGender(true)}
                                             >
                                                 <User size={32} color={gender ? theme.primary : theme.mutedForeground} />
-                                                <Text
-                                                    className="text-base font-semibold mt-1"
-                                                    style={{ color: gender ? theme.primary : theme.mutedForeground }}
-                                                >
+                                                <Text style={[styles.genderText, gender && styles.genderTextActive]}>
                                                     Male
                                                 </Text>
                                             </Pressable>
@@ -283,10 +269,7 @@ export default function RegisterScreen() {
                                                 onPress={() => setGender(false)}
                                             >
                                                 <User size={32} color={!gender ? theme.primary : theme.mutedForeground} />
-                                                <Text
-                                                    className="text-base font-semibold mt-1"
-                                                    style={{ color: !gender ? theme.primary : theme.mutedForeground }}
-                                                >
+                                                <Text style={[styles.genderText, !gender && styles.genderTextActive]}>
                                                     Female
                                                 </Text>
                                             </Pressable>
@@ -309,7 +292,7 @@ export default function RegisterScreen() {
                                             <Lock size={20} color={theme.mutedForeground} />
                                             <TextInput
                                                 className="flex-1 py-4 px-3 text-lg"
-                                                style={{ color: theme.foreground }}
+                                                style={styles.input}
                                                 placeholder="Create password"
                                                 placeholderTextColor={theme.mutedForeground}
                                                 value={password}
@@ -325,10 +308,7 @@ export default function RegisterScreen() {
                                                 }
                                             </Pressable>
                                         </View>
-                                        <Text
-                                            className="text-xs mt-1 ml-1"
-                                            style={{ color: theme.mutedForeground }}
-                                        >
+                                        <Text style={styles.helperText}>
                                             At least 6 characters
                                         </Text>
                                     </View>
@@ -343,7 +323,7 @@ export default function RegisterScreen() {
                                         <Lock size={20} color={theme.mutedForeground} />
                                         <TextInput
                                             className="flex-1 py-4 px-3 text-lg"
-                                            style={{ color: theme.foreground }}
+                                            style={styles.input}
                                             placeholder="Confirm password"
                                             placeholderTextColor={theme.mutedForeground}
                                             value={confirmPassword}
@@ -361,10 +341,7 @@ export default function RegisterScreen() {
                                                 ? <Check size={18} color={theme.accent} />
                                                 : <X size={18} color={theme.destructive} />
                                             }
-                                            <Text
-                                                className="text-sm"
-                                                style={{ color: passwordsMatch ? theme.accent : theme.destructive }}
-                                            >
+                                            <Text style={[styles.matchText, passwordsMatch && styles.matchTextSuccess, passwordsDontMatch && styles.matchTextError]}>
                                                 {passwordsMatch ? 'Passwords match!' : 'Passwords don\'t match'}
                                             </Text>
                                         </View>
@@ -384,10 +361,7 @@ export default function RegisterScreen() {
                                 <ActivityIndicator color={theme.primaryForeground} />
                             ) : (
                                 <>
-                                    <Text
-                                        className="text-lg font-bold"
-                                        style={{ color: theme.primaryForeground }}
-                                    >
+                                    <Text style={styles.buttonText}>
                                         {step < 2 ? 'Continue' : 'Create Account'}
                                     </Text>
                                     {step < 2 && <ChevronRight size={20} color={theme.primaryForeground} style={{ marginLeft: 4 }} />}
@@ -401,15 +375,9 @@ export default function RegisterScreen() {
                             onPress={() => router.push('/(auth)/login')}
                             disabled={loading}
                         >
-                            <Text
-                                className="text-sm"
-                                style={{ color: theme.mutedForeground }}
-                            >
+                            <Text style={styles.linkText}>
                                 Already have an account?{' '}
-                                <Text
-                                    className="font-bold"
-                                    style={{ color: theme.primary }}
-                                >
+                                <Text style={styles.linkTextBold}>
                                     Sign in
                                 </Text>
                             </Text>
@@ -420,3 +388,76 @@ export default function RegisterScreen() {
         </RetroGrid>
     );
 }
+
+const styles = StyleSheet.create({
+    backText: {
+        fontFamily: fonts.semiBold,
+        marginLeft: 8,
+        color: theme.primary,
+        fontSize: 16,
+    },
+    stepTitle: {
+        fontSize: 24,
+        fontFamily: fonts.bold,
+        textAlign: 'center',
+        color: theme.foreground,
+    },
+    stepSubtitle: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        textAlign: 'center',
+        marginTop: 4,
+        color: theme.mutedForeground,
+    },
+    input: {
+        color: theme.foreground,
+        fontFamily: fonts.regular,
+    },
+    genderLabel: {
+        fontSize: 14,
+        fontFamily: fonts.semiBold,
+        marginBottom: 12,
+        textAlign: 'center',
+        color: theme.mutedForeground,
+    },
+    genderText: {
+        fontSize: 16,
+        fontFamily: fonts.semiBold,
+        marginTop: 4,
+        color: theme.mutedForeground,
+    },
+    genderTextActive: {
+        color: theme.primary,
+    },
+    helperText: {
+        fontSize: 12,
+        fontFamily: fonts.regular,
+        marginTop: 4,
+        marginLeft: 4,
+        color: theme.mutedForeground,
+    },
+    matchText: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+    },
+    matchTextSuccess: {
+        color: theme.accent,
+    },
+    matchTextError: {
+        color: theme.destructive,
+    },
+    buttonText: {
+        fontSize: 18,
+        fontFamily: fonts.bold,
+        color: theme.primaryForeground,
+    },
+    linkText: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+    },
+    linkTextBold: {
+        fontFamily: fonts.bold,
+        color: theme.primary,
+    },
+});

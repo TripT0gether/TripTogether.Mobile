@@ -8,6 +8,7 @@ import {
     Platform,
     ScrollView,
     ActivityIndicator,
+    StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { authService } from '../../src/services/authService';
@@ -73,10 +74,7 @@ export default function VerifyOtpScreen() {
                         className="flex-row items-center mb-4"
                     >
                         <ArrowLeft size={24} color={theme.primary} />
-                        <Text
-                            className="font-semibold ml-2"
-                            style={{ color: theme.primary }}
-                        >
+                        <Text style={styles.backText}>
                             Back
                         </Text>
                     </Pressable>
@@ -89,22 +87,13 @@ export default function VerifyOtpScreen() {
                         >
                             <Mail size={40} color={theme.primary} />
                         </View>
-                        <Text
-                            className="text-2xl font-bold text-center"
-                            style={{ color: theme.foreground }}
-                        >
+                        <Text style={styles.pageTitle}>
                             Check Your Email
                         </Text>
-                        <Text
-                            className="text-sm text-center mt-2"
-                            style={{ color: theme.mutedForeground }}
-                        >
+                        <Text style={styles.description}>
                             We've sent a 6-digit code to
                         </Text>
-                        <Text
-                            className="text-sm font-semibold text-center"
-                            style={{ color: theme.primary }}
-                        >
+                        <Text style={styles.emailText}>
                             {email}
                         </Text>
                     </View>
@@ -118,21 +107,14 @@ export default function VerifyOtpScreen() {
                             ...shadows.retro,
                         }}
                     >
-                        <Text
-                            className="text-sm font-semibold mb-2 text-center"
-                            style={{ color: theme.mutedForeground }}
-                        >
+                        <Text style={styles.inputLabel}>
                             Verification Code
                         </Text>
 
                         {/* OTP Input */}
                         <TextInput
                             className="rounded-lg border-2 px-4 py-4 text-2xl text-center tracking-widest font-bold mb-6"
-                            style={{
-                                backgroundColor: theme.input,
-                                borderColor: theme.border,
-                                color: theme.foreground,
-                            }}
+                            style={styles.otpInput}
                             placeholder="000000"
                             placeholderTextColor={theme.mutedForeground}
                             value={otp}
@@ -157,10 +139,7 @@ export default function VerifyOtpScreen() {
                             ) : (
                                 <>
                                     <CheckCircle2 size={20} color={theme.primaryForeground} />
-                                    <Text
-                                        className="text-lg font-bold ml-2"
-                                        style={{ color: theme.primaryForeground }}
-                                    >
+                                    <Text style={styles.primaryButtonText}>
                                         Verify Email
                                     </Text>
                                 </>
@@ -170,7 +149,7 @@ export default function VerifyOtpScreen() {
                         {/* Divider */}
                         <View className="flex-row items-center my-4">
                             <View className="flex-1 h-[1px]" style={{ backgroundColor: theme.border }} />
-                            <Text className="mx-3 text-sm" style={{ color: theme.mutedForeground }}>or</Text>
+                            <Text style={styles.dividerText}>or</Text>
                             <View className="flex-1 h-[1px]" style={{ backgroundColor: theme.border }} />
                         </View>
 
@@ -189,10 +168,7 @@ export default function VerifyOtpScreen() {
                             ) : (
                                 <>
                                     <RefreshCw size={18} color={theme.primary} />
-                                    <Text
-                                        className="text-base font-semibold ml-2"
-                                        style={{ color: theme.primary }}
-                                    >
+                                    <Text style={styles.secondaryButtonText}>
                                         Resend Code
                                     </Text>
                                 </>
@@ -208,10 +184,7 @@ export default function VerifyOtpScreen() {
                             borderColor: theme.accent,
                         }}
                     >
-                        <Text
-                            className="text-xs text-center"
-                            style={{ color: theme.mutedForeground }}
-                        >
+                        <Text style={styles.tipText}>
                             💡 Check your spam folder if you don't see the email
                         </Text>
                     </View>
@@ -220,3 +193,70 @@ export default function VerifyOtpScreen() {
         </RetroGrid>
     );
 }
+
+const styles = StyleSheet.create({
+    backText: {
+        fontFamily: fonts.semiBold,
+        marginLeft: 8,
+        color: theme.primary,
+        fontSize: 16,
+    },
+    pageTitle: {
+        fontSize: 24,
+        fontFamily: fonts.bold,
+        textAlign: 'center',
+        color: theme.foreground,
+        marginBottom: 8,
+    },
+    description: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        textAlign: 'center',
+        color: theme.mutedForeground,
+        marginTop: 8,
+    },
+    emailText: {
+        fontSize: 14,
+        fontFamily: fonts.semiBold,
+        textAlign: 'center',
+        color: theme.primary,
+        marginTop: 4,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontFamily: fonts.semiBold,
+        marginBottom: 8,
+        textAlign: 'center',
+        color: theme.mutedForeground,
+    },
+    otpInput: {
+        backgroundColor: theme.input,
+        borderColor: theme.border,
+        color: theme.foreground,
+        fontFamily: fonts.bold,
+    },
+    primaryButtonText: {
+        fontSize: 18,
+        fontFamily: fonts.bold,
+        marginLeft: 8,
+        color: theme.primaryForeground,
+    },
+    dividerText: {
+        marginHorizontal: 12,
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+    },
+    secondaryButtonText: {
+        fontSize: 16,
+        fontFamily: fonts.semiBold,
+        marginLeft: 8,
+        color: theme.primary,
+    },
+    tipText: {
+        fontSize: 12,
+        fontFamily: fonts.regular,
+        textAlign: 'center',
+        color: theme.mutedForeground,
+    },
+});
