@@ -18,6 +18,10 @@ export interface GetMyGroupsParams {
     ascending?: boolean;
 }
 
+export interface InviteMemberRequest {
+    userId: string;
+}
+
 // ============= Response Types =============
 
 export interface GroupMember {
@@ -26,7 +30,7 @@ export interface GroupMember {
     email: string;
     avatarUrl: string | null;
     role: 'Leader' | 'Member';
-    status: 'Active' | 'Inactive';
+    status: 'Active' | 'Inactive' | 'Pending';
 }
 
 export interface Group {
