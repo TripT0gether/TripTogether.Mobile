@@ -341,7 +341,11 @@ export default function RegisterScreen() {
                                                 ? <Check size={18} color={theme.accent} />
                                                 : <X size={18} color={theme.destructive} />
                                             }
-                                            <Text style={[styles.matchText, passwordsMatch && styles.matchTextSuccess, passwordsDontMatch && styles.matchTextError]}>
+                                            <Text style={[
+                                                styles.matchText,
+                                                passwordsMatch ? styles.matchTextSuccess : null,
+                                                passwordsDontMatch ? styles.matchTextError : null
+                                            ]}>
                                                 {passwordsMatch ? 'Passwords match!' : 'Passwords don\'t match'}
                                             </Text>
                                         </View>
