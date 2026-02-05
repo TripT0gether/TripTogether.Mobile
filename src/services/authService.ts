@@ -1,46 +1,13 @@
 import { apiService } from './apiConfig';
 import { tokenStorage } from './tokenStorage';
 import { ApiResponse } from '../types/api.types';
-import { User, AuthTokens } from '../types/user.types';
-
-// ============= Request Types =============
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  username: string;
-  gender: boolean;
-}
-
-export interface VerifyOtpRequest {
-  email: string;
-  otp: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-// ============= Response Types =============
-
-export interface RegisterResponse {
-  user: User;
-}
-
-export interface VerifyOtpResponse {
-  // Only returns message, no data
-}
-
-export interface LoginResponse {
-  tokens: AuthTokens;
-}
-
-export interface LogoutResponse {
-  success: boolean;
-}
-
-// ============= Auth Service =============
+import {
+  User,
+  AuthTokens,
+  RegisterRequest,
+  VerifyOtpRequest,
+  LoginRequest,
+} from '../types/auth.types';
 
 export const authService = {
   /**
@@ -53,7 +20,6 @@ export const authService = {
       data
     );
 
-    // Check if registration was successful
     if (!response.isSuccess || !response.value?.data) {
       throw new Error(response.error || 'Registration failed');
     }
@@ -114,7 +80,6 @@ export const authService = {
     } catch (error) {
       console.error('Logout API call failed:', error);
     } finally {
-      // Always clear local tokens
       await tokenStorage.clearTokens();
     }
   },
