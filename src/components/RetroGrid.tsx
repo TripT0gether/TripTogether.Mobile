@@ -31,7 +31,7 @@ export default function RetroGrid({ children }: RetroGridProps) {
                                 y2="24"
                                 stroke={theme.primary}
                                 strokeWidth="1"
-                                strokeOpacity="0.05"
+                                strokeOpacity="0.15"
                             />
                             <Line
                                 x1="0"
@@ -40,7 +40,7 @@ export default function RetroGrid({ children }: RetroGridProps) {
                                 y2="24"
                                 stroke={theme.primary}
                                 strokeWidth="1"
-                                strokeOpacity="0.05"
+                                strokeOpacity="0.15"
                             />
                         </Pattern>
                     </Defs>
