@@ -9,7 +9,6 @@ interface RetroGridProps {
 
 /**
  * RetroGrid - Provides the retro grid background pattern
- * Used as a wrapper component for screens
  */
 export default function RetroGrid({ children }: RetroGridProps) {
     return (

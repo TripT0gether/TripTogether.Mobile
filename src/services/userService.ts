@@ -30,4 +30,18 @@ export const userService = {
 
         return response.value.data;
     },
+
+    /**
+     * Delete user account (soft delete)
+     * DELETE /api/account/me
+     */
+    async deleteAccount(): Promise<boolean> {
+        const response = await apiService.delete<ApiResponse<boolean>>('/account/me');
+
+        if (!response.isSuccess || !response.value?.data) {
+            throw new Error(response.error || 'Failed to delete account');
+        }
+
+        return response.value.data;
+    },
 };
