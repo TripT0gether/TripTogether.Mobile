@@ -11,7 +11,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Settings, LogOut, Bell, HelpCircle } from 'lucide-react-native';
+import { User, Settings, LogOut, Bell, HelpCircle, CheckCircle2, XCircle } from 'lucide-react-native';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -95,6 +95,15 @@ export default function Header() {
         }
     };
 
+    const getInitials = () => {
+        if (!user?.username) return '?';
+        const names = user.username.split(' ');
+        if (names.length >= 2) {
+            return (names[0][0] + names[1][0]).toUpperCase();
+        }
+        return user.username.substring(0, 2).toUpperCase();
+    };
+
     const closeSheet = () => {
         Animated.parallel([
             Animated.timing(slideAnim, {
@@ -122,15 +131,6 @@ export default function Header() {
         } catch (error: any) {
             showErrorToast('Logout Failed', error.message || 'Please try again');
         }
-    };
-
-    const getInitials = () => {
-        if (!user?.username) return '?';
-        const names = user.username.split(' ');
-        if (names.length >= 2) {
-            return (names[0][0] + names[1][0]).toUpperCase();
-        }
-        return user.username.substring(0, 2).toUpperCase();
     };
 
     return (
@@ -217,15 +217,28 @@ export default function Header() {
                     <View style={styles.content}>
                         {/* User Info */}
                         <View style={styles.userInfo}>
-                            <Text style={styles.userName}>{user?.username || 'User'}</Text>
-                            <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
-                            {user?.isEmailVerified && (
-                                <View className="flex-row items-center gap-1 mt-1">
-                                    <View
-                                        className="w-2 h-2 rounded-full"
-                                        style={{ backgroundColor: theme.accent }}
-                                    />
-                                    <Text style={styles.verifiedText}>Verified</Text>
+                            {/* Avatar and Info Row */}
+                            <View style={styles.userInfoRow}>
+                                {/* Avatar */}
+                                <View style={styles.sheetAvatar}>
+                                    <Text style={styles.sheetAvatarText}>{getInitials()}</Text>
+                                </View>
+                                {/* Name and Email */}
+                                <View style={styles.userDetails}>
+                                    <Text style={styles.userName}>{user?.username || 'User'}</Text>
+                                    <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+                                </View>
+                            </View>
+                            {/* Verification Badge */}
+                            {user?.isEmailVerified ? (
+                                <View style={styles.verifiedBadge}>
+                                    <CheckCircle2 size={14} color={theme.accent} />
+                                    <Text style={styles.verifiedText}>Verified Account</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.unverifiedBadge}>
+                                    <XCircle size={14} color={theme.destructive} />
+                                    <Text style={styles.unverifiedText}>Email Not Verified</Text>
                                 </View>
                             )}
                         </View>
@@ -337,25 +350,79 @@ const styles = StyleSheet.create({
     },
     userInfo: {
         paddingVertical: 16,
+        paddingHorizontal: 4,
         borderBottomWidth: 2,
         borderBottomColor: theme.border,
         marginBottom: 8,
+        gap: 12,
     },
-    userName: {
+    userInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    sheetAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: `${theme.primary}20`,
+        borderWidth: 2,
+        borderColor: theme.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sheetAvatarText: {
         fontSize: 18,
         fontFamily: fonts.bold,
+        color: theme.primary,
+    },
+    userDetails: {
+        flex: 1,
+        gap: 2,
+    },
+    userName: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
         color: theme.foreground,
-        marginBottom: 4,
     },
     userEmail: {
-        fontSize: 14,
+        fontSize: 12,
         fontFamily: fonts.regular,
         color: theme.mutedForeground,
     },
+    verifiedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        backgroundColor: `${theme.accent}15`,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: theme.accent,
+    },
     verifiedText: {
-        fontSize: 12,
-        fontFamily: fonts.regular,
+        fontSize: 11,
+        fontFamily: fonts.medium,
         color: theme.accent,
+    },
+    unverifiedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        backgroundColor: `${theme.destructive}15`,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: theme.destructive,
+    },
+    unverifiedText: {
+        fontSize: 11,
+        fontFamily: fonts.medium,
+        color: theme.destructive,
     },
     menuItems: {
         paddingVertical: 8,
