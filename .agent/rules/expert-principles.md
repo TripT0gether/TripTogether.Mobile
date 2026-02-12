@@ -75,3 +75,23 @@ You are an expert in React Native development for building high-quality cross-pl
 - Handle offline state.
 - Use error boundaries.
 - Keep dependencies updated.
+
+## Documentation & Comments:
+- **File-level comments**: Add a comment block at the beginning of each file explaining:
+  - The file's purpose and responsibility
+  - How it fits into the overall architecture
+  - Key functionality and exports
+  - Any important patterns or conventions used
+- **Avoid line-by-line comments**: Code should be self-documenting through clear variable names, function names, and structure. Only add inline comments for complex logic or non-obvious decisions.
+- **Example**:
+  ```tsx
+  /**
+   * AuthContext.tsx
+   * 
+   * Provides authentication state management for the entire app.
+   * Exposes login, logout, and token refresh functionality through context.
+   * Handles JWT storage in secure storage and automatic token refresh.
+   * 
+   * Used by: All protected routes, API interceptors
+   */
+  ```
