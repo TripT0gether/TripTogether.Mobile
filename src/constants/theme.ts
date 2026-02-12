@@ -1,35 +1,55 @@
 /**
- * Retro Theme Colors - Updated to match prototype
- * Warm terracotta/rust tones for a fresh, vibrant retro feel
+ * theme.ts
  * 
- * Colors extracted from prototype design
+ * Central design system configuration for TripTogether mobile app.
+ * Implements a "Clean 80s Retro" aesthetic with warm earth tones and vintage computer-inspired colors.
+ * 
+ * Purpose:
+ * - Provides consistent color palette across light and dark modes
+ * - Exports reusable design tokens (spacing, radius, shadows, fonts)
+ * - Ensures brand consistency with terracotta/rust primary color (#A0462D)
+ * 
+ * Key Exports:
+ * - colors: Light and dark mode color palettes with semantic naming (primary, accent, destructive, etc.)
+ * - theme: Current active theme (defaults to light mode)
+ * - shadows: Retro-style hard shadows (no blur) using terracotta color
+ * - spacing: Consistent spacing scale (xs: 4px → 2xl: 32px)
+ * - radius: Border radius scale (sm: 4px → full: 9999px)
+ * - fonts: IBM Plex Mono font family weights
+ * 
+ * Design Philosophy:
+ * - OKLCH color space for perceptual uniformity (referenced in web prototype)
+ * - Warm neutrals (cream, beige, brown) instead of gray
+ * - Terracotta (#A0462D) as signature brand color
+ * - Hard retro shadows with no blur radius
+ * - Monospace typography (IBM Plex Mono) for vintage terminal feel
+ * 
+ * Used by: All UI components, screens, and styled elements throughout the app
  */
 
 export const colors = {
-    // Light Mode (Default) - Matching prototype
     light: {
-        background: '#F9F6F0',      // Warm cream background
-        foreground: '#2B1810',      // Very dark brown for text
-        card: '#FFFCF7',            // Slightly warmer white for cards
-        cardForeground: '#2B1810',  // Dark brown text on cards
+        background: '#F9F6F0',
+        foreground: '#2B1810',
+        card: '#FFFCF7',
+        cardForeground: '#2B1810',
         popover: '#FFFCF7',
         popoverForeground: '#2B1810',
-        primary: '#A0462D',         // Terracotta/rust - main brand color from prototype
-        primaryForeground: '#FFFCF7', // Cream text on primary
-        secondary: '#7B9B7D',       // Sage green for secondary actions
+        primary: '#A0462D',
+        primaryForeground: '#FFFCF7',
+        secondary: '#7B9B7D',
         secondaryForeground: '#FFFCF7',
-        muted: '#E8E0D5',           // Muted beige
-        mutedForeground: '#6B5D52', // Medium brown for muted text
-        accent: '#5A8F5E',          // Fresh sage green for positive/success
+        muted: '#E8E0D5',
+        mutedForeground: '#6B5D52',
+        accent: '#5A8F5E',
         accentForeground: '#FFFCF7',
-        destructive: '#C84B3E',     // Warm red for negative/errors
+        destructive: '#C84B3E',
         destructiveForeground: '#FFFCF7',
-        border: '#D4C4B0',          // Soft tan border
-        input: '#F0EBE3',           // Light warm gray for inputs
-        ring: '#A0462D',            // Terracotta ring color
+        border: '#D4C4B0',
+        input: '#F0EBE3',
+        ring: '#A0462D',
     },
 
-    // Dark Mode - More vibrant for dark theme
     dark: {
         background: '#1C1410',
         foreground: '#F9F6F0',
@@ -37,7 +57,7 @@ export const colors = {
         cardForeground: '#F9F6F0',
         popover: '#2A2117',
         popoverForeground: '#F9F6F0',
-        primary: '#C85A3E',         // Brighter terracotta for dark mode
+        primary: '#C85A3E',
         primaryForeground: '#1C1410',
         secondary: '#8FB391',
         secondaryForeground: '#1C1410',
@@ -53,10 +73,8 @@ export const colors = {
     },
 };
 
-// Current theme (can be extended for dark mode support)
 export const theme = colors.light;
 
-// Shadow styles for retro effect - using terracotta
 export const shadows = {
     retro: {
         shadowColor: '#A0462D',
@@ -74,7 +92,6 @@ export const shadows = {
     },
 };
 
-// Spacing
 export const spacing = {
     xs: 4,
     sm: 8,
@@ -84,7 +101,6 @@ export const spacing = {
     '2xl': 32,
 };
 
-// Border radius
 export const radius = {
     sm: 4,
     md: 6,
@@ -94,7 +110,6 @@ export const radius = {
     full: 9999,
 };
 
-// Font families - IBM Plex Mono
 export const fonts = {
     regular: 'IBMPlexMono_400Regular',
     medium: 'IBMPlexMono_500Medium',

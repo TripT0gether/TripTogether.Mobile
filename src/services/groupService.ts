@@ -9,8 +9,6 @@ import {
     PaginatedGroupsResponse,
 } from '../types/group.types';
 
-// ============= Group Service =============
-
 export const groupService = {
     /**
      * Create a new group
@@ -84,7 +82,6 @@ export const groupService = {
      * Supports pagination, search, and sorting
      */
     async getMyGroups(params?: GetMyGroupsParams): Promise<PaginatedGroupsResponse> {
-        // Build query parameters
         const queryParams = new URLSearchParams();
 
         if (params?.pageNumber !== undefined) {
