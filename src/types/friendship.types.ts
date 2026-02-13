@@ -85,3 +85,29 @@ export interface PaginatedFriendRequestsResponse {
     hasPrevious: boolean;
     hasNext: boolean;
 }
+
+export interface Friend {
+    friendId: string;
+    username: string;
+    email: string;
+    avatarUrl: string | null;
+    friendsSince: string;
+}
+
+export interface PaginatedFriendsResponse {
+    items: Friend[];
+    currentPage: number;
+    totalPages: number;
+    pageSize: number;
+    totalCount: number;
+    hasPrevious: boolean;
+    hasNext: boolean;
+}
+
+export interface GetFriendsParams {
+    pageNumber?: number;
+    pageSize?: number;
+    searchTerm?: string;
+    sortBy?: string;
+    ascending?: boolean;
+}

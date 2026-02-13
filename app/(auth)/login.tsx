@@ -40,10 +40,10 @@ export default function LoginScreen() {
             return;
         }
 
-        if (password.length < 6) {
-            showErrorToast('Invalid Password', 'Password must be at least 6 characters');
-            return;
-        }
+        // if (password.length < 6) {
+        //     showErrorToast('Invalid Password', 'Password must be at least 6 characters');
+        //     return;
+        // }
 
         setLoading(true);
 

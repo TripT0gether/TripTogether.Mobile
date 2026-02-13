@@ -180,6 +180,12 @@ export default function RootLayout() {
             headerBackTitle: 'Back',
           }}
         />
+        <Stack.Screen
+          name="friends"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
       <Toast config={toastConfig} />
     </ErrorBoundary>

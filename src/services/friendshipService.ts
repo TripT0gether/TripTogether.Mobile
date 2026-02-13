@@ -27,6 +27,9 @@ import {
     FriendRequest,
     GetFriendRequestsParams,
     PaginatedFriendRequestsResponse,
+    Friend,
+    PaginatedFriendsResponse,
+    GetFriendsParams,
 } from '../types/friendship.types';
 
 export const friendshipService = {
@@ -116,6 +119,41 @@ export const friendshipService = {
 
         if (!response.isSuccess || !response.value?.data) {
             throw new Error(response.error || 'Failed to reject friend request');
+        }
+
+        return response.value.data;
+    },
+
+    async getFriends(params?: GetFriendsParams): Promise<PaginatedFriendsResponse> {
+        const queryParams = new URLSearchParams();
+
+        if (params?.pageNumber !== undefined) {
+            queryParams.append('pageNumber', params.pageNumber.toString());
+        }
+
+        if (params?.pageSize !== undefined) {
+            queryParams.append('pageSize', params.pageSize.toString());
+        }
+
+        if (params?.searchTerm) {
+            queryParams.append('searchTerm', params.searchTerm);
+        }
+
+        if (params?.sortBy) {
+            queryParams.append('sortBy', params.sortBy);
+        }
+
+        if (params?.ascending !== undefined) {
+            queryParams.append('ascending', params.ascending.toString());
+        }
+
+        const queryString = queryParams.toString();
+        const url = `/friendships/my-friends${queryString ? `?${queryString}` : ''}`;
+
+        const response = await apiService.get<ApiResponse<PaginatedFriendsResponse>>(url);
+
+        if (!response.isSuccess || !response.value?.data) {
+            throw new Error(response.error || 'Failed to get friends list');
         }
 
         return response.value.data;

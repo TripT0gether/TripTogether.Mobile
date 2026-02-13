@@ -11,7 +11,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Settings, LogOut, Bell, HelpCircle, CheckCircle2, XCircle } from 'lucide-react-native';
+import { User, Settings, LogOut, Bell, HelpCircle, CheckCircle2, XCircle, UserPlus } from 'lucide-react-native';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -159,26 +159,38 @@ export default function Header() {
                         </Text>
                     </View>
 
-                    {/* Avatar Button */}
-                    <Pressable
-                        onPress={() => setMenuVisible(true)}
-                        className="w-12 h-12 rounded-full items-center justify-center border-2"
-                        style={{
-                            backgroundColor: `${theme.primary}15`,
-                            borderColor: theme.primary,
-                        }}
-                    >
-                        {loading ? (
-                            <ActivityIndicator size="small" color={theme.primary} />
-                        ) : (
-                            <Text
-                                className="font-bold text-base"
-                                style={{ color: theme.primary, fontFamily: fonts.bold }}
-                            >
-                                {getInitials()}
-                            </Text>
-                        )}
-                    </Pressable>
+                    <View className="flex-row items-center gap-2">
+                        <Pressable
+                            onPress={() => router.push('/friends')}
+                            className="w-11 h-11 rounded-full items-center justify-center border-2"
+                            style={{
+                                backgroundColor: theme.card,
+                                borderColor: theme.border,
+                            }}
+                        >
+                            <UserPlus size={20} color={theme.primary} />
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => setMenuVisible(true)}
+                            className="w-12 h-12 rounded-full items-center justify-center border-2"
+                            style={{
+                                backgroundColor: `${theme.primary}15`,
+                                borderColor: theme.primary,
+                            }}
+                        >
+                            {loading ? (
+                                <ActivityIndicator size="small" color={theme.primary} />
+                            ) : (
+                                <Text
+                                    className="font-bold text-base"
+                                    style={{ color: theme.primary, fontFamily: fonts.bold }}
+                                >
+                                    {getInitials()}
+                                </Text>
+                            )}
+                        </Pressable>
+                    </View>
                 </View>
             </View>
 
