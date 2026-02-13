@@ -158,4 +158,14 @@ export const friendshipService = {
 
         return response.value.data;
     },
+
+    async unfriend(friendshipId: string): Promise<boolean> {
+        const response = await apiService.delete<ApiResponse<boolean>>(`/friendships/unfriend/${friendshipId}`);
+
+        if (!response.isSuccess || !response.value?.data) {
+            throw new Error(response.error || 'Failed to unfriend user');
+        }
+
+        return response.value.data;
+    },
 };

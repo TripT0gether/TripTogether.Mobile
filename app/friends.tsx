@@ -17,9 +17,10 @@ import {
     StyleSheet,
     RefreshControl,
     PanResponder,
+    Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, UserPlus, UserCheck, Check, X, Clock, ArrowLeft, Users } from 'lucide-react-native';
+import { Search, UserPlus, UserCheck, Check, X, Clock, ArrowLeft, Users, UserMinus } from 'lucide-react-native';
 import { friendshipService } from '../src/services/friendshipService';
 import {
     UserSearchResult,
@@ -246,6 +247,40 @@ export default function FriendsScreen() {
                 return next;
             });
         }
+    };
+
+    const handleUnfriend = async (friendshipId: string, username: string) => {
+        Alert.alert(
+            'Unfriend User',
+            `Are you sure you want to unfriend ${username}?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Unfriend',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setPendingActions(prev => new Set(prev).add(friendshipId));
+                        try {
+                            await friendshipService.unfriend(friendshipId);
+                            setFriends(prev => prev.filter(friend => friend.friendId !== friendshipId));
+                            showSuccessToast('Unfriended', `You are no longer friends with ${username}`);
+                            await fetchFriends();
+                        } catch (error: any) {
+                            showErrorToast('Failed', error.message || 'Could not unfriend user');
+                        } finally {
+                            setPendingActions(prev => {
+                                const next = new Set(prev);
+                                next.delete(friendshipId);
+                                return next;
+                            });
+                        }
+                    },
+                },
+            ],
+        );
     };
 
     const getInitials = (username: string) => {
@@ -581,9 +616,17 @@ export default function FriendsScreen() {
                                         </Text>
                                     </View>
                                 </View>
-                                <View style={styles.friendBadge}>
-                                    <Users size={14} color={theme.accent} />
-                                </View>
+                                <Pressable
+                                    onPress={() => handleUnfriend(friend.friendId, friend.username)}
+                                    style={styles.unfriendButton}
+                                    disabled={pendingActions.has(friend.friendId)}
+                                >
+                                    {pendingActions.has(friend.friendId) ? (
+                                        <ActivityIndicator size="small" color={theme.destructive} />
+                                    ) : (
+                                        <UserMinus size={18} color={theme.destructive} />
+                                    )}
+                                </Pressable>
                             </View>
                         ))}
                     </View>
@@ -1029,5 +1072,12 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontFamily: fonts.bold,
         color: theme.destructiveForeground,
+    },
+    unfriendButton: {
+        padding: 8,
+        borderRadius: radius.full,
+        backgroundColor: theme.destructive + '15',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
