@@ -1,13 +1,40 @@
+/**
+ * apiConfig.ts
+ * 
+ * Centralized Axios HTTP client configuration with JWT authentication and automatic token refresh.
+ * Implements request/response interceptors for seamless authentication and error handling.
+ * 
+ * Key Features:
+ * - Platform-aware API base URL configuration (Android emulator, iOS simulator, physical device)
+ * - Automatic JWT token injection into request headers
+ * - Automatic token refresh on 401 (Unauthorized) responses
+ * - Request queueing during token refresh to prevent race conditions
+ * - Type-safe HTTP methods (GET, POST, PUT, PATCH, DELETE)
+ * - Configurable base URL for dev/production environments
+ * 
+ * Architecture:
+ * - Singleton ApiService class exported as `apiService`
+ * - Request interceptor: Adds Bearer token to Authorization header
+ * - Response interceptor: Handles 401 errors with automatic token refresh
+ * - Failed requests queued and retried after successful token refresh
+ * 
+ * Token Refresh Flow:
+ * 1. API returns 401 → Check if refresh is already in progress
+ * 2. If yes → Queue request for retry after refresh completes
+ * 3. If no → Mark refresh as in-progress, call /auth/refresh-token
+ * 4. On success → Save new tokens, process queued requests
+ * 5. On failure → Clear tokens, reject all queued requests
+ * 
+ * Platform URLs:
+ * - Android Emulator: http://10.0.2.2:5000/api (routes to host machine)
+ * - iOS Simulator/Physical Device: http://192.168.1.16:5000/api (local network IP)
+ * - Production: https://your-api-domain.com/api
+ * 
+ * Used by: All service files for API communication
+ */
+
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from './tokenStorage';
-
-/**
- * API Configuration
- * 
- * For Android Emulator: use 10.0.2.2 (special IP that routes to host localhost)
- * For Physical Device: use computer's local IP (e.g., 192.168.1.16)
- * For iOS Simulator: localhost works
- */
 import { Platform } from 'react-native';
 
 const getDevApiUrl = () => {
@@ -21,7 +48,6 @@ const API_BASE_URL = __DEV__
   ? getDevApiUrl()
   : 'https://your-api-domain.com/api';
 
-// Debug logging
 console.log('API Configuration:', {
   platform: Platform.OS,
   isDev: __DEV__,
@@ -34,9 +60,6 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
-/**
- * Process queued requests after token refresh
- */
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -60,7 +83,6 @@ class ApiService {
       },
     });
 
-    // Request interceptor to add auth token
     this.client.interceptors.request.use(
       async (config: InternalAxiosRequestConfig) => {
         const token = await tokenStorage.getAccessToken();
@@ -74,7 +96,6 @@ class ApiService {
       }
     );
 
-    // Response interceptor for automatic token refresh
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
@@ -82,10 +103,8 @@ class ApiService {
           _retry?: boolean;
         };
 
-        // If error is 401 and we haven't tried to refresh yet
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (isRefreshing) {
-            // If already refreshing, queue this request
             return new Promise((resolve, reject) => {
               failedQueue.push({ resolve, reject });
             })
@@ -110,22 +129,18 @@ class ApiService {
               throw new Error('No refresh token available');
             }
 
-            // Call refresh endpoint
             const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
               refreshToken,
             });
 
-            // Handle wrapped response format
             if (!data.isSuccess || !data.value?.data) {
               throw new Error(data.error || 'Token refresh failed');
             }
 
             const { accessToken, refreshToken: newRefreshToken } = data.value.data;
 
-            // Save new tokens
             await tokenStorage.saveTokens(accessToken, newRefreshToken);
 
-            // Update authorization header and retry original request
             if (originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             }
@@ -136,7 +151,6 @@ class ApiService {
           } catch (refreshError) {
             processQueue(refreshError as AxiosError, null);
 
-            // Clear tokens on refresh failure
             await tokenStorage.clearTokens();
 
             return Promise.reject(refreshError);
@@ -150,61 +164,38 @@ class ApiService {
     );
   }
 
-  /**
-   * Generic GET request
-   */
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.get(url, config);
     return response.data;
   }
 
-  /**
-   * Generic POST request
-   */
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.post(url, data, config);
     return response.data;
   }
 
-  /**
-   * Generic PUT request
-   */
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.put(url, data, config);
     return response.data;
   }
 
-  /**
-   * Generic PATCH request
-   */
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.patch(url, data, config);
     return response.data;
   }
 
-  /**
-   * Generic DELETE request
-   */
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.delete(url, config);
     return response.data;
   }
 
-  /**
-   * Update base URL (useful for switching between dev/prod)
-   */
   setBaseURL(url: string): void {
     this.client.defaults.baseURL = url;
   }
 
-  /**
-   * Get current base URL
-   */
   getBaseURL(): string {
     return this.client.defaults.baseURL || API_BASE_URL;
   }
 }
 
-// Export singleton instance
 export const apiService = new ApiService();
-

@@ -14,8 +14,6 @@
  * 
  * Status Flow:
  * Pending → Accepted (friendship created) or Rejected (request deleted)
- * 
- * Used by: friendshipService, friend-related screens and components
  */
 
 export interface UserSearchResult {

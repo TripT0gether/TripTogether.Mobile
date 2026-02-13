@@ -1,3 +1,40 @@
+/**
+ * authService.ts
+ * 
+ * Handles authentication workflows including registration, login, and session management.
+ * Implements JWT-based authentication with automatic token storage and refresh capability.
+ * 
+ * Key Features:
+ * - User registration with email/password and OTP verification flow
+ * - Email-based login with JWT token issuance
+ * - Automatic secure token storage using expo-secure-store
+ * - Logout with backend notification and local token cleanup
+ * - User authentication status checking
+ * - OTP resend functionality for email verification
+ * 
+ * API Endpoints:
+ * - POST /api/auth/register - Register new user account
+ * - POST /api/auth/verify-otp - Verify email with OTP code
+ * - POST /api/auth/login - Authenticate and receive tokens
+ * - POST /api/auth/logout - Invalidate session and clear tokens
+ * - GET /api/auth/me - Get current authenticated user
+ * - POST /api/auth/resend-otp - Resend verification OTP
+ * 
+ * Authentication Flow:
+ * 1. Register → Receive OTP via email
+ * 2. Verify OTP → Email confirmed
+ * 3. Login → Receive access + refresh tokens (auto-stored)
+ * 4. Use access token for API calls (handled by apiConfig)
+ * 5. Logout → Clear tokens and notify backend
+ * 
+ * Token Management:
+ * - Tokens automatically stored in secure storage on login
+ * - Access token added to requests via apiConfig interceptor
+ * - Refresh handled automatically by apiConfig on 401 responses
+ * 
+ * Used by: Authentication screens, AuthContext, protected route guards
+ */
+
 import { apiService } from './apiConfig';
 import { tokenStorage } from './tokenStorage';
 import { ApiResponse } from '../types/api.types';
@@ -10,10 +47,6 @@ import {
 } from '../types/auth.types';
 
 export const authService = {
-  /**
-   * Register a new user
-   * POST /api/auth/register
-   */
   async register(data: RegisterRequest): Promise<User> {
     const response = await apiService.post<ApiResponse<User>>(
       '/auth/register',
@@ -27,10 +60,6 @@ export const authService = {
     return response.value.data;
   },
 
-  /**
-   * Verify OTP for email confirmation
-   * POST /api/auth/verify-otp
-   */
   async verifyOtp(data: VerifyOtpRequest): Promise<string> {
     const response = await apiService.post<ApiResponse<void>>(
       '/auth/verify-otp',
@@ -44,10 +73,6 @@ export const authService = {
     return response.value.message;
   },
 
-  /**
-   * Login user with email and password
-   * POST /api/auth/login
-   */
   async login(credentials: LoginRequest): Promise<AuthTokens> {
     const response = await apiService.post<ApiResponse<AuthTokens>>(
       '/auth/login',
@@ -60,16 +85,11 @@ export const authService = {
 
     const tokens = response.value.data;
 
-    // Store tokens securely
     await tokenStorage.saveTokens(tokens.accessToken, tokens.refreshToken);
 
     return tokens;
   },
 
-  /**
-   * Logout user - clear tokens and notify backend
-   * POST /api/auth/logout
-   */
   async logout(): Promise<void> {
     try {
       const response = await apiService.post<ApiResponse<boolean>>('/auth/logout');
@@ -84,10 +104,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Get current authenticated user
-   * GET /api/auth/me
-   */
   async getCurrentUser(): Promise<User> {
     const response = await apiService.get<ApiResponse<User>>('/auth/me');
 
@@ -98,17 +114,10 @@ export const authService = {
     return response.value.data;
   },
 
-  /**
-   * Check if user is authenticated (has valid tokens)
-   */
   async isAuthenticated(): Promise<boolean> {
     return await tokenStorage.hasTokens();
   },
 
-  /**
-   * Re-send OTP for email verification
-   * POST /api/auth/resend-otp
-   */
   async resendOtp(email: string): Promise<string> {
     const response = await apiService.post<ApiResponse<void>>(
       '/auth/resend-otp',
@@ -122,5 +131,3 @@ export const authService = {
     return response.value.message;
   },
 };
-
-

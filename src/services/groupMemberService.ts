@@ -1,13 +1,40 @@
+/**
+ * groupMemberService.ts
+ * 
+ * Manages group membership operations including invitations, acceptances, and removals.
+ * Handles the lifecycle of group member relationships with role-based permissions.
+ * 
+ * Key Features:
+ * - Invite users to join groups (leader-only)
+ * - Accept or reject group invitations (invited user)
+ * - Remove members from groups (leader-only)
+ * - Leave groups (any member, with leader restrictions)
+ * 
+ * API Endpoints:
+ * - POST /api/groups/{groupId}/members/invite - Invite user to group
+ * - POST /api/groups/{groupId}/members/accept-invitation - Accept pending invitation
+ * - DELETE /api/groups/{groupId}/members/reject-invitation - Reject invitation
+ * - DELETE /api/groups/{groupId}/members/{userId} - Remove member from group
+ * - DELETE /api/groups/{groupId}/members/leave - Leave a group
+ * 
+ * Permission Model:
+ * - Leader can invite and remove members
+ * - Invited users can accept/reject their own invitations
+ * - Leaders must transfer leadership before leaving (if other members exist)
+ * - Members can leave freely
+ * 
+ * Member Status Flow:
+ * Invite → Pending → Accept (Active) or Reject (Deleted)
+ * Active → Leave/Remove (Inactive)
+ * 
+ * Used by: Group management screens, member lists, invitation notifications
+ */
+
 import { apiService } from './apiConfig';
 import { ApiResponse } from '../types/api.types';
 import { GroupMember, InviteMemberRequest } from '../types/group.types';
 
 export const groupMemberService = {
-    /**
-     * Invite a member to join a group
-     * POST /api/groups/{groupId}/members/invite
-     * Only group leaders can invite members
-     */
     async inviteMember(groupId: string, data: InviteMemberRequest): Promise<GroupMember> {
         const response = await apiService.post<ApiResponse<GroupMember>>(
             `/groups/${groupId}/members/invite`,
@@ -21,10 +48,6 @@ export const groupMemberService = {
         return response.value.data;
     },
 
-    /**
-     * Accept a pending group invitation
-     * POST /api/groups/{groupId}/members/accept-invitation
-     */
     async acceptInvitation(groupId: string): Promise<GroupMember> {
         const response = await apiService.post<ApiResponse<GroupMember>>(
             `/groups/${groupId}/members/accept-invitation`
@@ -37,10 +60,6 @@ export const groupMemberService = {
         return response.value.data;
     },
 
-    /**
-     * Reject a pending group invitation
-     * DELETE /api/groups/{groupId}/members/reject-invitation
-     */
     async rejectInvitation(groupId: string): Promise<boolean> {
         const response = await apiService.delete<ApiResponse<boolean>>(
             `/groups/${groupId}/members/reject-invitation`
@@ -53,11 +72,6 @@ export const groupMemberService = {
         return response.value.data;
     },
 
-    /**
-     * Remove a member from the group
-     * DELETE /api/groups/{groupId}/members/{userId}
-     * Only group leaders can remove members
-     */
     async removeMember(groupId: string, userId: string): Promise<boolean> {
         const response = await apiService.delete<ApiResponse<boolean>>(
             `/groups/${groupId}/members/${userId}`
@@ -70,11 +84,6 @@ export const groupMemberService = {
         return response.value.data;
     },
 
-    /**
-     * Leave a group
-     * DELETE /api/groups/{groupId}/members/leave
-     * Leaders must transfer leadership before leaving if there are other members
-     */
     async leaveGroup(groupId: string): Promise<boolean> {
         const response = await apiService.delete<ApiResponse<boolean>>(
             `/groups/${groupId}/members/leave`
