@@ -1,130 +1,255 @@
 # TripTogether Mobile
 
-React Native mobile application built with Expo, NativeWind, and Tailwind CSS, designed to integrate with a .NET API backend.
+A React Native mobile application for collaborative group travel planning, expense tracking, and friend management. Built with Expo, TypeScript, and a "Clean 80s Retro" design aesthetic.
 
 ## Tech Stack
 
-- **React Native** with **Expo**
-- **TypeScript** for type safety
-- **NativeWind** (v2.0.11) for Tailwind CSS styling
-- **Tailwind CSS** (v3.3.2)
-- **Axios** for API calls
-- **Expo Router** for navigation
-- **Expo Secure Store** for secure token storage
+- **React Native** (0.74.5) with **Expo** (~51.0.0)
+- **TypeScript** (5.3.3) for type safety
+- **Expo Router** (3.5.0) for file-based navigation
+- **NativeWind** (2.0.11) with **Tailwind CSS** (3.3.2)
+- **Axios** for API communication with auto-refresh JWT tokens
+- **Expo Secure Store** for secure authentication token storage
+- **Lucide React Native** for retro-style icons
+- **React Native Toast Message** for user feedback
 
 ## Project Structure
 
 ```
 TripTogether.Mobile/
-├── assets/              # Images, fonts, and other assets
+├── app/                 # File-based routing (Expo Router)
+│   ├── (auth)/         # Auth screens (route group, URL: /login, /register)
+│   ├── index.tsx       # Home/Groups dashboard
+│   ├── friends.tsx     # Friends management
+│   └── profile.tsx     # User profile
 ├── src/
-│   ├── components/      # Reusable UI components
-│   ├── screens/        # Screen components
-│   ├── navigation/     # Navigation configuration
-│   ├── hooks/          # Custom React hooks
-│   ├── services/       # API services and external integrations
-│   └── utils/          # Utility functions and constants
-├── App.js              # Root component (kept clean)
-├── app.json            # Expo configuration
-├── package.json        # Dependencies
-├── tsconfig.json       # TypeScript configuration
-├── tailwind.config.js  # Tailwind CSS configuration
-└── babel.config.js     # Babel configuration with NativeWind
+│   ├── components/     # Reusable UI components
+│   ├── services/       # API service layer (auth, user, group, friendship)
+│   ├── types/          # TypeScript definitions
+│   ├── constants/      # Theme & design tokens
+│   └── utils/          # Helper functions
+└── assets/             # Images, fonts, icons
 ```
+
+## Design System
+
+**Theme:** "Clean 80s Retro" - Vintage computer terminal aesthetic with warm earth tones
+
+**Color Palette:**
+- Primary: Terracotta Brown (`#A0462D`)
+- Secondary: Sage Green (`#7B9B7D`)
+- Accent: Olive Green (success states)
+- Background: Cream (`#F9F6F0`)
+- Card: Off-White (`#FFFCF7`)
+
+**Typography:** IBM Plex Mono (monospace font family)
+
+**UI Elements:**
+- Retro box shadows (offset shadows)
+- Border-heavy cards
+- Pixel-perfect borders and rounded corners
+- Toast notifications with retro styling
+
+## Features
+
+### **Authentication**
+- Email/password registration with OTP verification
+- Secure JWT-based authentication
+- Automatic token refresh
+- Logout functionality
+
+### **Friend Management**
+- Search users by username/email
+- Send/receive friend requests
+- Accept/reject requests
+- Unfriend with confirmation dialog
+- Friends list with search filtering
+- Swipeable tab navigation (Friends, Requests, Search)
+
+### **Group Management**
+- Create and browse travel groups
+- View group details
+- Pagination support
+- Search functionality
+
+### **User Profile**
+- View and edit profile information
+- Display verification status
+- Avatar with initials
+
+### **Navigation**
+- File-based routing with Expo Router
+- Bottom sheet user menu
+- Header with notification bell (UI only, badge shows "3")
+- Stack navigation with gestures
 
 ## Setup Instructions
 
-1. **Install Dependencies**
-   
-   This project uses **pnpm** as the package manager. If you don't have pnpm installed:
-   ```powershell
-   npm install -g pnpm
-   ```
-   
-   Then install project dependencies:
-   ```powershell
-   pnpm install
-   ```
+### Prerequisites
+- Node.js (16+)
+- **pnpm** (9.15.4) - Required package manager
+- Expo CLI
+- Android Studio (for Android) or Xcode (for iOS)
 
-2. **Configure API Base URL**
-   - Open `src/services/api.ts`
-   - Update `API_BASE_URL` with your .NET API endpoint:
-     ```typescript
-     const API_BASE_URL = 'http://your-api-url:port/api';
-     ```
+### 1. Install pnpm
+```bash
+npm install -g pnpm@9.15.4
+```
 
-3. **Configure API Endpoints**
-   - Open `src/utils/constants.ts`
-   - Update `API_ENDPOINTS` with your actual .NET API routes
+### 2. Install Dependencies
+```bash
+pnpm install
+```
 
-4. **Start Development Server**
-   ```powershell
-   pnpm start
-   ```
-   
-   Or use the specific platform commands:
-   ```powershell
-   pnpm android  # For Android
-   pnpm ios      # For iOS
-   pnpm web      # For Web
-   ```
+### 3. Configure API Endpoint
+Update the API base URL in `src/services/apiConfig.ts`:
+
+```typescript
+export const API_CONFIG = {
+  BASE_URL: 'http://your-backend-url:port/api',
+  TIMEOUT: 30000,
+};
+```
+
+### 4. Start Development Server
+```bash
+pnpm start
+```
+
+Or use platform-specific commands:
+```bash
+pnpm android  # Android emulator
+pnpm ios      # iOS simulator
+pnpm web      # Web browser
+```
+
+### 5. Clear Cache (if needed)
+```bash
+pnpm start --clear
+```
+
+## Running on Devices
+
+### **Android Emulator**
+1. Open Android Studio → Device Manager
+2. Start an AVD (Android Virtual Device)
+3. Run `pnpm android`
+4. App installs and launches automatically via ADB
+
+### **Physical Device**
+1. Install Expo Go app from App/Play Store
+2. Scan QR code from terminal
+3. Ensure device is on same network as dev server
+
+## Authentication Flow
+
+1. **Register:** Email + password → OTP sent to email
+2. **Verify OTP:** Enter 6-digit code
+3. **Login:** JWT access + refresh tokens stored securely
+4. **Auto-refresh:** Axios interceptor handles token expiry
+5. **Logout:** Clears tokens from secure storage
 
 ## API Integration
 
-The project includes a complete API service layer (`src/services/api.ts`) that:
-- Handles authentication tokens automatically
-- Provides interceptors for request/response handling
-- Supports all HTTP methods (GET, POST, PUT, PATCH, DELETE)
-- Uses Expo Secure Store for token management
-
-### Example Usage
+The app uses a layered service architecture:
 
 ```typescript
-import { apiService } from '../services/api';
+// Example: Using the friend service
+import { friendshipService } from '../src/services/friendshipService';
 
-// GET request
-const data = await apiService.get('/users');
+// Search users
+const results = await friendshipService.searchUsers({ searchTerm: 'john' });
 
-// POST request
-const result = await apiService.post('/users', { name: 'John' });
+// Send friend request
+await friendshipService.sendFriendRequest(userId);
 
-// With custom hook
-const { data, loading, error } = useApi(
-  () => apiService.get('/users'),
-  []
-);
+// Get friends list
+const friends = await friendshipService.getFriends({ pageSize: 20 });
+
+// Unfriend
+await friendshipService.unfriend(friendshipId);
 ```
 
-## Styling
-
-This project uses NativeWind (Tailwind CSS for React Native). You can use Tailwind utility classes directly in your components:
-
-```tsx
-<View className="flex-1 bg-gray-50 p-4">
-  <Text className="text-2xl font-bold text-gray-900">
-    Hello World
-  </Text>
-</View>
+**API Response Format:**
+```typescript
+{
+  "isSuccess": true,
+  "value": {
+    "code": "200",
+    "message": "Success",
+    "data": { /* actual data */ }
+  },
+  "error": null
+}
 ```
 
-## Development
+## Route Groups Explained
 
-- Use TypeScript for all new files in `src/`
-- Follow the folder structure guidelines
-- Use functional components with hooks
-- Implement proper error handling for API calls
-- Use Expo Secure Store for sensitive data
+Expo Router uses `(parentheses)` for **route groups** - folders that organize files without affecting URLs:
+
+```
+app/(auth)/login.tsx  →  /login  (not /auth/login)
+```
+
+Benefits:
+- Cleaner URLs
+- Shared layouts between related screens
+- Better code organization
 
 ## Package Manager
 
-This project uses **pnpm** for faster, more efficient package management. The `.npmrc` file is configured with:
-- `node-linker=hoisted` - Better React Native compatibility
-- `shamefully-hoist=true` - Ensures Metro bundler works correctly
-- Public hoist patterns for React Native and Expo packages
+**pnpm** is required for this project. Configuration in `.npmrc`:
+- `node-linker=hoisted` - React Native compatibility
+- `shamefully-hoist=true` - Metro bundler support
+- Public hoist patterns for Expo and React Native
 
-## Notes
+## Type Checking
 
-- NativeWind version: 2.0.11
-- Tailwind CSS version: 3.3.2
-- These specific versions are required for compatibility
-- Package manager: **pnpm** (configured in `.npmrc`)
+```bash
+pnpm type-check
+```
+
+## Common Issues
+
+### **Metro bundler cache issues**
+```bash
+pnpm start --clear
+```
+
+### **Dependencies not resolving**
+```bash
+rm -rf node_modules
+pnpm install
+```
+
+### **ADB device not found**
+```bash
+adb devices
+adb kill-server && adb start-server
+```
+
+## Development Guidelines
+
+- Use **TypeScript** for all new code
+- Follow existing folder structure
+- Use functional components with hooks
+- Implement proper error handling for all API calls
+- Test on both iOS and Android
+- Follow the retro design system (theme.ts)
+- Use `showSuccessToast()` and `showErrorToast()` for user feedback
+
+## Upcoming Features
+
+- [ ] Notifications (bell icon functional)
+- [ ] Trip planning workflow
+- [ ] Expense tracking & settlement
+- [ ] Photo gallery
+- [ ] Real-time updates (WebSocket)
+
+## Related Repositories
+
+- **Backend API:** TripTogether.API (.NET)
+
+## License
+
+Private - Academic Project
