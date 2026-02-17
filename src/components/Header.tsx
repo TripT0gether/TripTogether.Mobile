@@ -11,7 +11,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Settings, LogOut, Bell, HelpCircle, CheckCircle2, XCircle, UserPlus } from 'lucide-react-native';
+import { User, Settings, LogOut, Bell, HelpCircle, CheckCircle2, XCircle, Users } from 'lucide-react-native';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -160,15 +160,43 @@ export default function Header() {
                     </View>
 
                     <View className="flex-row items-center gap-2">
+                        {/* Notification Bell */}
                         <Pressable
-                            onPress={() => router.push('/friends')}
+                            onPress={() => { }}
                             className="w-11 h-11 rounded-full items-center justify-center border-2"
                             style={{
                                 backgroundColor: theme.card,
                                 borderColor: theme.border,
+                                position: 'relative',
                             }}
                         >
-                            <UserPlus size={20} color={theme.primary} />
+                            <Bell size={20} color={theme.primary} />
+                            {/* Notification Badge */}
+                            <View
+                                style={{
+                                    position: 'absolute',
+                                    top: -4,
+                                    right: -4,
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: 10,
+                                    backgroundColor: theme.destructive,
+                                    borderWidth: 2,
+                                    borderColor: theme.card,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        fontSize: 10,
+                                        fontFamily: fonts.bold,
+                                        color: theme.destructiveForeground,
+                                    }}
+                                >
+                                    3
+                                </Text>
+                            </View>
                         </Pressable>
 
                         <Pressable
@@ -269,6 +297,20 @@ export default function Header() {
                             >
                                 <User size={24} color={theme.primary} />
                                 <Text style={styles.menuItemText}>Profile</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.menuItem,
+                                    pressed && styles.menuItemPressed,
+                                ]}
+                                onPress={() => {
+                                    closeSheet();
+                                    setTimeout(() => router.push('/friends'), 300);
+                                }}
+                            >
+                                <Users size={24} color={theme.primary} />
+                                <Text style={styles.menuItemText}>Friends</Text>
                             </Pressable>
 
                             <Pressable

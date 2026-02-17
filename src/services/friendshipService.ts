@@ -16,6 +16,7 @@
  * - GET /api/friendships/requests - Get friend requests (received or sent)
  * - POST /api/friendships/accept/{friendshipId} - Accept a friend request
  * - DELETE /api/friendships/reject/{friendshipId} - Reject a friend request
+ * - DELETE /api/friendships/unfriend/{friendshipId} - Unfriend a user
  */
 
 import { apiService } from './apiConfig';
