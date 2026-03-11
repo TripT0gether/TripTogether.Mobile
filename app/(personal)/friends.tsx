@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Search, UserPlus, UserCheck, Check, X, Clock, ArrowLeft, Users, UserMinus } from 'lucide-react-native';
-import { friendshipService } from '../src/services/friendshipService';
+import { friendshipService } from '../../src/services/friendshipService';
 import {
     UserSearchResult,
     PaginatedUserSearchResponse,
@@ -29,10 +29,10 @@ import {
     PaginatedFriendRequestsResponse,
     Friend,
     PaginatedFriendsResponse,
-} from '../src/types/friendship.types';
-import { showSuccessToast, showErrorToast } from '../src/utils/toast';
-import RetroGrid from '../src/components/RetroGrid';
-import { theme, shadows, fonts, radius } from '../src/constants/theme';
+} from '../../src/types/friendship.types';
+import { showSuccessToast, showErrorToast } from '../../src/utils/toast';
+import RetroGrid from '../../src/components/RetroGrid';
+import { theme, shadows, fonts, radius } from '../../src/constants/theme';
 
 type Tab = 'friends' | 'requests' | 'search';
 type RequestType = 'received' | 'sent';

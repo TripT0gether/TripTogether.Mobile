@@ -24,12 +24,12 @@ import {
     CheckCircle2,
     XCircle,
 } from 'lucide-react-native';
-import { userService } from '../src/services/userService';
-import { authService } from '../src/services/authService';
-import { showErrorToast, showSuccessToast } from '../src/utils/toast';
-import RetroGrid from '../src/components/RetroGrid';
-import { theme, shadows, fonts } from '../src/constants/theme';
-import type { User as UserType } from '../src/types/user.types';
+import { userService } from '../../src/services/userService';
+import { authService } from '../../src/services/authService';
+import { showErrorToast, showSuccessToast } from '../../src/utils/toast';
+import RetroGrid from '../../src/components/RetroGrid';
+import { theme, shadows, fonts } from '../../src/constants/theme';
+import type { User as UserType } from '../../src/types/user.types';
 
 export default function ProfileScreen() {
     const router = useRouter();

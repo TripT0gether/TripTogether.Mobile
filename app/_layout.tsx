@@ -173,7 +173,7 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="profile"
+          name="(personal)/profile"
           options={{
             title: 'Profile',
             headerShown: true,
@@ -181,7 +181,7 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="friends"
+          name="(personal)/friends"
           options={{
             headerShown: false,
           }}
