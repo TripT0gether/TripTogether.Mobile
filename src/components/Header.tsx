@@ -21,7 +21,8 @@ import type { User as UserType } from '../types/user.types';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT * 0.6; // 60% of screen
 
-export default function Header() {
+export default function Header({ floating }: { floating?: boolean }) {
+    const isFloating = !!floating;
     const router = useRouter();
     const [user, setUser] = useState<UserType | null>(null);
     const [loading, setLoading] = useState(true);
@@ -135,92 +136,49 @@ export default function Header() {
 
     return (
         <>
-            {/* Header */}
-            <View
-                className="px-4 py-5 border-b-2"
-                style={{
-                    backgroundColor: `${theme.card}F0`,
-                    borderBottomColor: theme.border,
-                }}
-            >
-                <View className="flex-row items-center justify-between">
-                    <View>
-                        <Text
-                            className="text-2xl font-bold tracking-tight"
-                            style={{ color: theme.primary, fontFamily: fonts.bold }}
-                        >
-                            TripTogether
-                        </Text>
-                        <Text
-                            className="text-xs mt-1 font-medium"
-                            style={{ color: theme.mutedForeground, fontFamily: fonts.medium }}
-                        >
-                            Group travel made simple
-                        </Text>
-                    </View>
-
-                    <View className="flex-row items-center gap-2">
-                        {/* Notification Bell */}
-                        <Pressable
-                            onPress={() => { }}
-                            className="w-11 h-11 rounded-full items-center justify-center border-2"
-                            style={{
-                                backgroundColor: theme.card,
-                                borderColor: theme.border,
-                                position: 'relative',
-                            }}
-                        >
-                            <Bell size={20} color={theme.primary} />
-                            {/* Notification Badge */}
-                            <View
-                                style={{
-                                    position: 'absolute',
-                                    top: -4,
-                                    right: -4,
-                                    width: 20,
-                                    height: 20,
-                                    borderRadius: 10,
-                                    backgroundColor: theme.destructive,
-                                    borderWidth: 2,
-                                    borderColor: theme.card,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: 10,
-                                        fontFamily: fonts.bold,
-                                        color: theme.destructiveForeground,
-                                    }}
-                                >
-                                    3
-                                </Text>
-                            </View>
-                        </Pressable>
-
-                        <Pressable
-                            onPress={() => setMenuVisible(true)}
-                            className="w-12 h-12 rounded-full items-center justify-center border-2"
-                            style={{
-                                backgroundColor: `${theme.primary}15`,
-                                borderColor: theme.primary,
-                            }}
-                        >
-                            {loading ? (
-                                <ActivityIndicator size="small" color={theme.primary} />
-                            ) : (
-                                <Text
-                                    className="font-bold text-base"
-                                    style={{ color: theme.primary, fontFamily: fonts.bold }}
-                                >
-                                    {getInitials()}
-                                </Text>
-                            )}
-                        </Pressable>
-                    </View>
+            {/* Floating pill actions — always visible, overlays content */}
+            {isFloating ? (
+                <View style={styles.floatingContainer}>
+                    <Pressable onPress={() => {}} style={styles.floatingPill}>
+                        <Bell size={18} color={theme.primary} />
+                        <View style={styles.floatingNotifBadge}>
+                            <Text style={styles.notifBadgeText}>3</Text>
+                        </View>
+                    </Pressable>
+                    <Pressable onPress={() => setMenuVisible(true)} style={styles.floatingAvatarPill}>
+                        {loading ? (
+                            <ActivityIndicator size="small" color={theme.primary} />
+                        ) : (
+                            <Text style={styles.floatingAvatarText}>{getInitials()}</Text>
+                        )}
+                    </Pressable>
                 </View>
-            </View>
+            ) : (
+                /* Full header bar */
+                <Animated.View style={styles.headerBar}>
+                    <View style={styles.headerRow}>
+                        <View>
+                            <Text style={styles.brandTitle}>TripTogether</Text>
+                            <Text style={styles.brandSubtitle}>Group travel made simple</Text>
+                        </View>
+                        <View style={styles.headerActions}>
+                            <Pressable onPress={() => {}} style={styles.bellButton}>
+                                <Bell size={20} color={theme.primary} />
+                                <View style={styles.notifBadge}>
+                                    <Text style={styles.notifBadgeText}>3</Text>
+                                </View>
+                            </Pressable>
+                            <Pressable onPress={() => setMenuVisible(true)} style={styles.avatarButton}>
+                                {loading ? (
+                                    <ActivityIndicator size="small" color={theme.primary} />
+                                ) : (
+                                    <Text style={styles.avatarText}>{getInitials()}</Text>
+                                )}
+                            </Pressable>
+                        </View>
+                    </View>
+                </Animated.View>
+            )}
 
             {/* Bottom Sheet Modal */}
             <Modal
@@ -369,6 +327,127 @@ export default function Header() {
 }
 
 const styles = StyleSheet.create({
+    headerBar: {
+        paddingHorizontal: 16,
+        paddingVertical: 20,
+        backgroundColor: `${theme.card}F0`,
+        borderBottomWidth: 2,
+        borderBottomColor: theme.border,
+    },
+    floatingContainer: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        zIndex: 100,
+    },
+    floatingPill: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: `${theme.card}E8`,
+        borderWidth: 2,
+        borderColor: theme.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...shadows.retroSm,
+    },
+    floatingNotifBadge: {
+        position: 'absolute',
+        top: -3,
+        right: -3,
+        width: 17,
+        height: 17,
+        borderRadius: 9,
+        backgroundColor: theme.destructive,
+        borderWidth: 2,
+        borderColor: theme.card,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    floatingAvatarPill: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: `${theme.primary}20`,
+        borderWidth: 2,
+        borderColor: theme.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...shadows.retroSm,
+    },
+    floatingAvatarText: {
+        fontSize: 14,
+        fontFamily: fonts.bold,
+        color: theme.primary,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    brandTitle: {
+        fontSize: 24,
+        fontFamily: fonts.bold,
+        color: theme.primary,
+        letterSpacing: -0.5,
+    },
+    brandSubtitle: {
+        fontSize: 12,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+        marginTop: 2,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    bellButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        backgroundColor: theme.card,
+        borderColor: theme.border,
+    },
+    notifBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: theme.destructive,
+        borderWidth: 2,
+        borderColor: theme.card,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    notifBadgeText: {
+        fontSize: 10,
+        fontFamily: fonts.bold,
+        color: theme.destructiveForeground,
+    },
+    avatarButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        backgroundColor: `${theme.primary}15`,
+        borderColor: theme.primary,
+    },
+    avatarText: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
+        color: theme.primary,
+    },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',

@@ -28,7 +28,6 @@ import {
     StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import * as Clipboard from 'expo-clipboard';
 import {
     ArrowLeft,
     Map,
@@ -55,6 +54,7 @@ import { Trip } from '../../src/types/trip.types';
 import { GroupInvite } from '../../src/types/groupInvite.types';
 import { showSuccessToast, showErrorToast } from '../../src/utils/toast';
 import RetroGrid from '../../src/components/RetroGrid';
+import Header from '../../src/components/Header';
 import { theme, shadows, fonts, radius } from '../../src/constants/theme';
 
 type Tab = 'trips' | 'members' | 'invite' | 'settings';
@@ -487,6 +487,8 @@ export default function GroupDetailScreen() {
 
     return (
         <RetroGrid>
+            <Header floating />
+
             {/* Header */}
             <View style={s.header}>
                 <Pressable onPress={() => router.back()} hitSlop={12}>
