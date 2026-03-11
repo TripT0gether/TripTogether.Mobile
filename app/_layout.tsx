@@ -186,6 +186,12 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="group/[id]"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
       <Toast config={toastConfig} />
     </ErrorBoundary>

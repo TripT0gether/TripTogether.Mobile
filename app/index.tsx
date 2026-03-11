@@ -18,9 +18,11 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    Link,
 } from 'lucide-react-native';
 import { authService } from '../src/services/authService';
 import { groupService } from '../src/services/groupService';
+import { groupInviteService } from '../src/services/groupInviteService';
 import { Group, PaginatedGroupsResponse } from '../src/types/group.types';
 import Header from '../src/components/Header';
 import RetroGrid from '../src/components/RetroGrid';
@@ -35,6 +37,8 @@ export default function IndexScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [joinToken, setJoinToken] = useState('');
+    const [joining, setJoining] = useState(false);
 
     // Groups data
     const [groups, setGroups] = useState<Group[]>([]);
@@ -136,6 +140,23 @@ export default function IndexScreen() {
         }
     };
 
+    const handleJoinGroup = async () => {
+        const token = joinToken.trim();
+        if (!token) return;
+
+        setJoining(true);
+        try {
+            const group = await groupInviteService.joinGroupByToken(token);
+            setJoinToken('');
+            handleRefresh();
+            router.push(`/group/${group.id}`);
+        } catch (error) {
+            console.error('Failed to join group:', error);
+        } finally {
+            setJoining(false);
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -179,6 +200,49 @@ export default function IndexScreen() {
                         <Plus size={18} color={theme.primaryForeground} />
                         <Text style={styles.createButtonText}>Create New Group</Text>
                     </Pressable>
+
+                    <View style={styles.dividerRow}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>or join with a link</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
+
+                    <View style={styles.joinRow}>
+                        <View style={styles.joinInputWrapper}>
+                            <Link size={16} color={theme.mutedForeground} />
+                            <TextInput
+                                style={styles.joinInput}
+                                placeholder="Paste invite token..."
+                                placeholderTextColor={theme.mutedForeground}
+                                value={joinToken}
+                                onChangeText={setJoinToken}
+                                onSubmitEditing={handleJoinGroup}
+                                returnKeyType="go"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            {joinToken.length > 0 && (
+                                <Pressable onPress={() => setJoinToken('')} hitSlop={8}>
+                                    <X size={16} color={theme.mutedForeground} />
+                                </Pressable>
+                            )}
+                        </View>
+                        <Pressable
+                            onPress={handleJoinGroup}
+                            disabled={!joinToken.trim() || joining}
+                            style={({ pressed }) => [
+                                styles.joinButton,
+                                (!joinToken.trim() || joining) && styles.joinButtonDisabled,
+                                pressed && !!joinToken.trim() && styles.joinButtonPressed,
+                            ]}
+                        >
+                            {joining ? (
+                                <ActivityIndicator size="small" color={theme.primaryForeground} />
+                            ) : (
+                                <Text style={styles.joinButtonText}>Join</Text>
+                            )}
+                        </Pressable>
+                    </View>
                 </View>
 
                 {/* Search Bar */}
@@ -364,6 +428,67 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: theme.primaryForeground,
         marginLeft: 8,
+    },
+
+    dividerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        marginBottom: 12,
+        gap: 8,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: theme.border,
+    },
+    dividerText: {
+        fontSize: 12,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+    },
+
+    joinRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    joinInputWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        borderRadius: radius.lg,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.input,
+        gap: 8,
+    },
+    joinInput: {
+        flex: 1,
+        fontSize: 13,
+        fontFamily: fonts.regular,
+        color: theme.foreground,
+        padding: 0,
+    },
+    joinButton: {
+        paddingHorizontal: 18,
+        paddingVertical: 11,
+        borderRadius: radius.lg,
+        backgroundColor: theme.secondary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    joinButtonDisabled: {
+        opacity: 0.5,
+    },
+    joinButtonPressed: {
+        opacity: 0.85,
+    },
+    joinButtonText: {
+        fontSize: 14,
+        fontFamily: fonts.bold,
+        color: theme.primaryForeground,
     },
 
     // Search
