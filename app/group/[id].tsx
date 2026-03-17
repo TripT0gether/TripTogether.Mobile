@@ -352,14 +352,6 @@ export default function GroupDetailScreen() {
                         <View style={s.badge}>
                             <Text style={s.badgeText}>{group.members.length}</Text>
                         </View>
-                        <View style={{ flex: 1 }} />
-                        {group.members.length > 3 && (
-                            membersExpanded ? (
-                                <ChevronUp size={20} color={theme.mutedForeground} />
-                            ) : (
-                                <ChevronDown size={20} color={theme.mutedForeground} />
-                            )
-                        )}
                     </Pressable>
                     <View style={s.memberList}>
                         {group.members
@@ -370,8 +362,7 @@ export default function GroupDetailScreen() {
                                     key={member.userId}
                                     style={[
                                         s.memberRow,
-                                        index < array.length - 1 && s.memberRowBorder,
-                                        !membersExpanded && group.members.length > 3 && index === array.length - 1 && s.memberRowBorder
+                                        (index < array.length - 1 || group.members.length > 3) && s.memberRowBorder
                                     ]}
                                 >
                                     {/* Avatar */}
@@ -409,17 +400,24 @@ export default function GroupDetailScreen() {
                                     ]} />
                                 </View>
                             ))}
-                        {!membersExpanded && group.members.length > 3 && (
+                        {group.members.length > 3 && (
                             <Pressable 
                                 style={[s.memberRow, { justifyContent: 'center', paddingVertical: 12 }]}
                                 onPress={() => {
                                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                    setMembersExpanded(true);
+                                    setMembersExpanded(!membersExpanded);
                                 }}
                             >
-                                <Text style={{ fontSize: 13, fontFamily: fonts.medium, color: theme.primary }}>
-                                    View all {group.members.length} members
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text style={{ fontSize: 13, fontFamily: fonts.medium, color: theme.primary }}>
+                                        {membersExpanded ? 'Hide members' : `View all ${group.members.length} members`}
+                                    </Text>
+                                    {membersExpanded ? (
+                                        <ChevronUp size={16} color={theme.primary} />
+                                    ) : (
+                                        <ChevronDown size={16} color={theme.primary} />
+                                    )}
+                                </View>
                             </Pressable>
                         )}
                     </View>
