@@ -316,13 +316,7 @@ export default function GroupDetailScreen() {
                     </View>
                 </View>
 
-                {isLeader ? (
-                    <Pressable onPress={openSettings} hitSlop={12} style={s.gearBtn}>
-                        <Settings size={20} color={theme.mutedForeground} />
-                    </Pressable>
-                ) : (
-                    <View style={{ width: 36 }} />
-                )}
+
             </View>
 
             {/* ── Scrollable Body ─────────────────────────────────── */}
@@ -340,7 +334,7 @@ export default function GroupDetailScreen() {
             >
                 {/* ── Members Section ──────────────────────────── */}
                 <View style={s.section}>
-                    <Pressable 
+                    <Pressable
                         style={s.sectionHeaderRow}
                         onPress={() => {
                             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -401,7 +395,7 @@ export default function GroupDetailScreen() {
                                 </View>
                             ))}
                         {group.members.length > 3 && (
-                            <Pressable 
+                            <Pressable
                                 style={[s.memberRow, { justifyContent: 'center', paddingVertical: 12 }]}
                                 onPress={() => {
                                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -453,6 +447,21 @@ export default function GroupDetailScreen() {
                         <Text style={s.actionBtnSecondaryText}>Share Invite</Text>
                     </Pressable>
                 </View>
+
+                {/* ── Group Settings (Leader only) ─────────────────── */}
+                {isLeader && (
+                    <Pressable
+                        style={({ pressed }) => [
+                            s.settingsBtn,
+                            shadows.retroSm,
+                            pressed && s.actionBtnPressed,
+                        ]}
+                        onPress={openSettings}
+                    >
+                        <Settings size={16} color={theme.mutedForeground} />
+                        <Text style={s.settingsBtnText}>Group Settings</Text>
+                    </Pressable>
+                )}
 
                 {/* ── Trips Section ───────────────────────────────── */}
                 <View style={s.section}>
@@ -538,7 +547,7 @@ export default function GroupDetailScreen() {
                 onRequestClose={() => setInviteDialogVisible(false)}
             >
                 <Pressable style={s.dialogOverlay} onPress={() => setInviteDialogVisible(false)}>
-                    <Pressable style={s.dialogContainer} onPress={() => {}}>
+                    <Pressable style={s.dialogContainer} onPress={() => { }}>
                         <View style={s.dialogHeader}>
                             <View style={s.dialogIconBadge}>
                                 <Share2 size={24} color={theme.primary} />
@@ -547,12 +556,12 @@ export default function GroupDetailScreen() {
                                 <X size={20} color={theme.mutedForeground} />
                             </Pressable>
                         </View>
-                        
+
                         <Text style={s.dialogTitle}>Invite Friends</Text>
                         <Text style={s.dialogSubtitle}>
                             Share this link with your friends so they can join the group "{group.name}".
                         </Text>
-                        
+
                         {invite && !invite.isExpired ? (
                             <>
                                 <Pressable style={s.dialogLinkBox} onPress={handleCopyLink}>
@@ -565,7 +574,7 @@ export default function GroupDetailScreen() {
                                         <Copy size={16} color={theme.primaryForeground} />
                                     </View>
                                 </Pressable>
-                                
+
                                 <View style={s.dialogExpiryRow}>
                                     <Clock size={14} color={theme.mutedForeground} />
                                     <Text style={s.dialogExpiryText}>
@@ -766,14 +775,7 @@ const s = StyleSheet.create({
         color: theme.mutedForeground,
         marginHorizontal: 2,
     },
-    gearBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: radius.lg,
-        backgroundColor: `${theme.muted}80`,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+
 
     // ── Scroll ──
     scroll: {
@@ -929,6 +931,23 @@ const s = StyleSheet.create({
         fontSize: 14,
         fontFamily: fonts.bold,
         color: theme.secondary,
+    },
+    settingsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 11,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.card,
+        marginBottom: 20,
+    },
+    settingsBtnText: {
+        fontSize: 14,
+        fontFamily: fonts.bold,
+        color: theme.mutedForeground,
     },
 
     // ── Trips List ──
