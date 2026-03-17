@@ -27,7 +27,6 @@ export type PollStatus = 'Open' | 'Closed' | 'Finalized';
 export type TimeOfDay = 'Morning' | 'Lunch' | 'Afternoon' | 'Dinner' | 'Evening' | 'LateNight';
 export type PollScope = 'All' | 'TripOnly' | 'ActivityOnly';
 
-// ── Core Entities ────────────────────────────────────────────────────────────
 
 export interface Poll {
     id: string;
@@ -72,7 +71,6 @@ export interface PaginatedPollsResponse {
     hasNext: boolean;
 }
 
-// ── Request Payloads ─────────────────────────────────────────────────────────
 
 export interface PollOptionInput {
     textValue?: string | null;
