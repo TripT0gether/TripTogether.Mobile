@@ -1,9 +1,9 @@
 /**
  * group/[id].tsx
  *
- * Group detail screen with tabbed navigation for managing a single group.
- * Shows trips, members, invite info, and settings (leader-only) in separate tabs.
- * Uses dynamic routing via Expo Router to receive groupId from URL params.
+ * Redesigned group detail screen – single scrollable page layout.
+ * Shows group header, member avatars row, quick actions, trip cards,
+ * active invite banner, and a leader-only settings bottom sheet.
  *
  * Data Sources:
  * - groupService.getGroupDetail → group info + members list
@@ -14,7 +14,7 @@
  * Used by: Navigation from home screen group cards
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -26,24 +26,39 @@ import {
     Alert,
     Share,
     StyleSheet,
+    Modal,
+    Animated,
+    Dimensions,
+    LayoutAnimation,
+    Platform,
+    UIManager,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
     ArrowLeft,
     Map,
     Users,
-    Link,
-    Settings,
     Plus,
     Calendar,
     DollarSign,
     Crown,
-    Copy,
     Clock,
     Trash2,
     Save,
     AlertTriangle,
     X,
+    Settings,
+    Share2,
+    UserPlus,
+    ChevronRight,
+    ChevronDown,
+    ChevronUp,
+    Copy,
 } from 'lucide-react-native';
 import { groupService } from '../../src/services/groupService';
 import { tripService } from '../../src/services/tripService';
@@ -53,11 +68,12 @@ import { GroupDetail, GroupMember } from '../../src/types/group.types';
 import { Trip } from '../../src/types/trip.types';
 import { GroupInvite } from '../../src/types/groupInvite.types';
 import { showSuccessToast, showErrorToast } from '../../src/utils/toast';
+import * as Clipboard from 'expo-clipboard';
 import RetroGrid from '../../src/components/RetroGrid';
 import Header from '../../src/components/Header';
-import { theme, shadows, fonts, radius } from '../../src/constants/theme';
+import { theme, shadows, fonts, radius, spacing } from '../../src/constants/theme';
 
-type Tab = 'trips' | 'members' | 'invite' | 'settings';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
     Planning: { bg: `${theme.primary}20`, text: theme.primary },
@@ -71,30 +87,33 @@ export default function GroupDetailScreen() {
     const router = useRouter();
     const { id: groupId } = useLocalSearchParams<{ id: string }>();
 
+    // ── State ────────────────────────────────────────────────────────────
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<Tab>('trips');
 
     const [group, setGroup] = useState<GroupDetail | null>(null);
     const [trips, setTrips] = useState<Trip[]>([]);
     const [invite, setInvite] = useState<GroupInvite | null>(null);
-    const [inviteLoaded, setInviteLoaded] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [isLeader, setIsLeader] = useState(false);
 
+    // Member list toggle
+    const [membersExpanded, setMembersExpanded] = useState(false);
+
+    // Invite Dialog
+    const [inviteDialogVisible, setInviteDialogVisible] = useState(false);
+
+    // Settings bottom sheet
+    const [settingsVisible, setSettingsVisible] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
     const [saving, setSaving] = useState(false);
+    const sheetAnim = useRef(new Animated.Value(0)).current;
 
+    // ── Data Loading ─────────────────────────────────────────────────────
     useEffect(() => {
         if (groupId) loadData();
     }, [groupId]);
-
-    useEffect(() => {
-        if (activeTab === 'invite' && !inviteLoaded && groupId) {
-            loadInvite();
-        }
-    }, [activeTab]);
 
     const loadData = async () => {
         try {
@@ -117,6 +136,14 @@ export default function GroupDetailScreen() {
                 (m: GroupMember) => m.userId === userData.id
             );
             setIsLeader(currentMember?.role === 'Leader');
+
+            // Load invite in background
+            try {
+                const inviteData = await groupInviteService.getActiveInvite(groupId!);
+                setInvite(inviteData);
+            } catch {
+                setInvite(null);
+            }
         } catch (error: any) {
             showErrorToast('Error', error.message || 'Failed to load group');
         } finally {
@@ -124,42 +151,28 @@ export default function GroupDetailScreen() {
         }
     };
 
-    const loadInvite = async () => {
-        try {
-            const inviteData = await groupInviteService.getActiveInvite(groupId!);
-            setInvite(inviteData);
-        } catch (error: any) {
-            setInvite(null);
-        } finally {
-            setInviteLoaded(true);
-        }
-    };
-
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
-        if (activeTab === 'invite') {
-            await loadInvite();
-        } else {
-            await loadData();
-        }
+        await loadData();
         setRefreshing(false);
-    }, [activeTab, groupId]);
+    }, [groupId]);
 
-    const handleCopyToken = async () => {
-        if (!invite?.token) return;
-        try {
-            await Share.share({ message: invite.token });
-        } catch {
-            // user dismissed
+    // ── Actions ──────────────────────────────────────────────────────────
+    const handleShareInviteClick = () => {
+        if (!invite?.inviteUrl) {
+            showErrorToast('No Invite', 'No active invite link available');
+            return;
         }
+        setInviteDialogVisible(true);
     };
 
-    const handleCopyUrl = async () => {
+    const handleCopyLink = async () => {
         if (!invite?.inviteUrl) return;
         try {
-            await Share.share({ message: invite.inviteUrl, url: invite.inviteUrl });
+            await Clipboard.setStringAsync(invite.inviteUrl);
+            showSuccessToast('Copied', 'Invite link copied to clipboard');
         } catch {
-            // user dismissed
+            showErrorToast('Failed', 'Could not copy link');
         }
     };
 
@@ -201,6 +214,31 @@ export default function GroupDetailScreen() {
         );
     };
 
+    // ── Settings Sheet Animation ─────────────────────────────────────────
+    const openSettings = () => {
+        setSettingsVisible(true);
+        setEditingName(false);
+        setNewGroupName(group?.name || '');
+        Animated.spring(sheetAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            damping: 20,
+            stiffness: 180,
+        }).start();
+    };
+
+    const closeSettings = () => {
+        Animated.timing(sheetAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(() => {
+            setSettingsVisible(false);
+            setEditingName(false);
+        });
+    };
+
+    // ── Helpers ──────────────────────────────────────────────────────────
     const formatDateRange = (start: string | null, end: string | null) => {
         if (!start && !end) return 'No dates set';
         const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -219,251 +257,15 @@ export default function GroupDetailScreen() {
         if (diff <= 0) return 'Expired';
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        if (hours > 0) return `${hours}h ${minutes}m remaining`;
-        return `${minutes}m remaining`;
+        if (hours > 0) return `${hours}h ${minutes}m left`;
+        return `${minutes}m left`;
     };
-
-    const availableTabs: { key: Tab; label: string; icon: any }[] = [
-        { key: 'trips', label: 'Trips', icon: Map },
-        { key: 'members', label: 'Members', icon: Users },
-        { key: 'invite', label: 'Invite', icon: Link },
-        ...(isLeader ? [{ key: 'settings' as Tab, label: 'Settings', icon: Settings }] : []),
-    ];
-
-    // ── Trips Tab ────────────────────────────────────────────────────────
-    const renderTripsTab = () => (
-        <View style={s.tabBody}>
-
-            {trips.length === 0 ? (
-                <View style={s.emptyState}>
-                    <Map size={48} color={theme.muted} />
-                    <Text style={s.emptyTitle}>No Trips Yet</Text>
-                    <Text style={s.emptySubtitle}>
-                        Create your first trip to start planning adventures with this group
-                    </Text>
-                </View>
-            ) : (
-                <View style={s.tripsList}>
-                    {trips.map((trip) => {
-                        const statusColor = STATUS_COLORS[trip.status] || STATUS_COLORS.Planning;
-                        return (
-                            <Pressable
-                                key={trip.id}
-                                style={({ pressed }) => [
-                                    s.tripCard,
-                                    shadows.retroSm,
-                                    pressed && s.tripCardPressed,
-                                ]}
-                            >
-                                <View style={s.tripCardHeader}>
-                                    <Text style={s.tripTitle} numberOfLines={1}>{trip.title}</Text>
-                                    <View style={[s.statusBadge, { backgroundColor: statusColor.bg }]}>
-                                        <Text style={[s.statusText, { color: statusColor.text }]}>
-                                            {trip.status}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={s.tripMeta}>
-                                    <View style={s.tripMetaRow}>
-                                        <Calendar size={14} color={theme.mutedForeground} />
-                                        <Text style={s.tripMetaText}>
-                                            {formatDateRange(trip.planningRangeStart, trip.planningRangeEnd)}
-                                        </Text>
-                                    </View>
-                                    {trip.budget > 0 && (
-                                        <View style={s.tripMetaRow}>
-                                            <DollarSign size={14} color={theme.mutedForeground} />
-                                            <Text style={s.tripMetaText}>
-                                                {trip.budget.toLocaleString()}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                <Text style={s.tripCreatedAt}>
-                                    Created {new Date(trip.createdAt).toLocaleDateString()}
-                                </Text>
-                            </Pressable>
-                        );
-                    })}
-                </View>
-            )}
-        </View>
-    );
-
-    // ── Members Tab ──────────────────────────────────────────────────────
-    const renderMembersTab = () => (
-        <View style={s.tabBody}>
-            <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>Members</Text>
-                <Text style={s.sectionCount}>
-                    {group?.members.length || 0} {(group?.members.length || 0) === 1 ? 'member' : 'members'}
-                </Text>
-            </View>
-            <View style={s.membersList}>
-                {group?.members
-                    .sort((a, b) => (a.role === 'Leader' ? -1 : 1))
-                    .map((member) => (
-                        <View key={member.userId} style={[s.memberCard, shadows.retroSm]}>
-                            <View style={s.memberInfo}>
-                                <View style={s.memberAvatar}>
-                                    <Text style={s.memberAvatarText}>
-                                        {getInitials(member.username)}
-                                    </Text>
-                                </View>
-                                <View style={s.memberDetails}>
-                                    <View style={s.memberNameRow}>
-                                        <Text style={s.memberName}>{member.username}</Text>
-                                        {member.role === 'Leader' && (
-                                            <View style={s.leaderBadge}>
-                                                <Crown size={10} color={theme.primaryForeground} />
-                                                <Text style={s.leaderBadgeText}>Leader</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <Text style={s.memberEmail}>{member.email}</Text>
-                                </View>
-                            </View>
-                            <View style={[
-                                s.statusDot,
-                                { backgroundColor: member.status === 'Active' ? theme.accent : theme.muted }
-                            ]} />
-                        </View>
-                    ))}
-            </View>
-        </View>
-    );
-
-    // ── Invite Tab ───────────────────────────────────────────────────────
-    const renderInviteTab = () => (
-        <View style={s.tabBody}>
-            {!inviteLoaded ? (
-                <View style={s.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                </View>
-            ) : !invite ? (
-                <View style={s.emptyState}>
-                    <Link size={48} color={theme.muted} />
-                    <Text style={s.emptyTitle}>No Active Invite</Text>
-                    <Text style={s.emptySubtitle}>
-                        There is no active invite link for this group
-                    </Text>
-                </View>
-            ) : (
-                <View style={s.inviteContent}>
-                    <View style={[s.inviteCard, shadows.retro]}>
-                        <View style={s.inviteHeader}>
-                            <Link size={20} color={theme.secondary} />
-                            <Text style={s.inviteTitle}>Invite Link</Text>
-                        </View>
-
-                        <View style={s.inviteField}>
-                            <Text style={s.inviteLabel}>Token</Text>
-                            <View style={s.inviteTokenRow}>
-                                <Text style={s.inviteTokenText} numberOfLines={1}>
-                                    {invite.token}
-                                </Text>
-                                <Pressable onPress={handleCopyToken} style={s.copyButton}>
-                                    <Copy size={16} color={theme.primary} />
-                                </Pressable>
-                            </View>
-                        </View>
-
-                        <View style={s.inviteField}>
-                            <Text style={s.inviteLabel}>Share URL</Text>
-                            <View style={s.inviteTokenRow}>
-                                <Text style={s.inviteUrlText} numberOfLines={2}>
-                                    {invite.inviteUrl}
-                                </Text>
-                                <Pressable onPress={handleCopyUrl} style={s.copyButton}>
-                                    <Copy size={16} color={theme.primary} />
-                                </Pressable>
-                            </View>
-                        </View>
-
-                        <View style={s.inviteExpiryRow}>
-                            <Clock size={14} color={invite.isExpired ? theme.destructive : theme.accent} />
-                            <Text style={[
-                                s.inviteExpiryText,
-                                { color: invite.isExpired ? theme.destructive : theme.accent }
-                            ]}>
-                                {invite.isExpired ? 'Expired' : getTimeUntilExpiry(invite.expiresAt)}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-            )}
-        </View>
-    );
-
-    // ── Settings Tab (Leader only) ───────────────────────────────────────
-    const renderSettingsTab = () => (
-        <View style={s.tabBody}>
-            <View style={[s.settingsCard, shadows.retroSm]}>
-                <Text style={s.settingsCardTitle}>Group Name</Text>
-                {editingName ? (
-                    <View style={s.renameRow}>
-                        <TextInput
-                            style={s.renameInput}
-                            value={newGroupName}
-                            onChangeText={setNewGroupName}
-                            placeholder="Enter group name"
-                            placeholderTextColor={theme.mutedForeground}
-                            autoFocus
-                        />
-                        <View style={s.renameActions}>
-                            <Pressable
-                                onPress={() => {
-                                    setEditingName(false);
-                                    setNewGroupName(group?.name || '');
-                                }}
-                                style={s.renameCancelBtn}
-                            >
-                                <X size={18} color={theme.mutedForeground} />
-                            </Pressable>
-                            <Pressable
-                                onPress={handleRenameGroup}
-                                disabled={saving || !newGroupName.trim()}
-                                style={[s.renameSaveBtn, (saving || !newGroupName.trim()) && s.btnDisabled]}
-                            >
-                                {saving ? (
-                                    <ActivityIndicator size="small" color={theme.primaryForeground} />
-                                ) : (
-                                    <Save size={18} color={theme.primaryForeground} />
-                                )}
-                            </Pressable>
-                        </View>
-                    </View>
-                ) : (
-                    <Pressable onPress={() => setEditingName(true)} style={s.renameDisplay}>
-                        <Text style={s.renameDisplayText}>{group?.name}</Text>
-                        <Text style={s.renameTapHint}>Tap to edit</Text>
-                    </Pressable>
-                )}
-            </View>
-
-            <View style={s.dangerZone}>
-                <View style={s.dangerHeader}>
-                    <AlertTriangle size={20} color={theme.destructive} />
-                    <Text style={s.dangerTitle}>Danger Zone</Text>
-                </View>
-                <Text style={s.dangerDescription}>
-                    Deleting this group will remove all trips, expenses, and data permanently.
-                </Text>
-                <Pressable onPress={handleDeleteGroup} style={s.deleteButton}>
-                    <Trash2 size={18} color={theme.destructive} />
-                    <Text style={s.deleteButtonText}>Delete Group</Text>
-                </Pressable>
-            </View>
-        </View>
-    );
 
     // ── Loading / Error States ───────────────────────────────────────────
     if (loading) {
         return (
             <RetroGrid>
-                <View style={s.loadingContainer}>
+                <View style={s.centered}>
                     <ActivityIndicator size="large" color={theme.primary} />
                     <Text style={s.loadingText}>Loading group...</Text>
                 </View>
@@ -474,39 +276,60 @@ export default function GroupDetailScreen() {
     if (!group) {
         return (
             <RetroGrid>
-                <View style={s.loadingContainer}>
+                <View style={s.centered}>
                     <AlertTriangle size={48} color={theme.destructive} />
                     <Text style={s.errorText}>Failed to load group</Text>
-                    <Pressable onPress={() => { setLoading(true); loadData(); }} style={s.retryButton}>
-                        <Text style={s.retryButtonText}>Retry</Text>
+                    <Pressable onPress={() => { setLoading(true); loadData(); }} style={s.retryBtn}>
+                        <Text style={s.retryBtnText}>Retry</Text>
                     </Pressable>
                 </View>
             </RetroGrid>
         );
     }
 
+    const leader = group.members.find((m) => m.role === 'Leader');
+
     return (
         <RetroGrid>
             <Header floating />
 
-            {/* Header */}
-            <View style={s.header}>
-                <Pressable onPress={() => router.back()} hitSlop={12}>
-                    <ArrowLeft size={24} color={theme.primary} />
+            {/* ── Group Header ─────────────────────────────────────── */}
+            <View style={s.groupHeader}>
+                <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
+                    <ArrowLeft size={22} color={theme.primary} />
                 </Pressable>
-                <View style={s.headerCenter}>
-                    <Text style={s.headerTitle} numberOfLines={1}>{group.name}</Text>
-                    <Text style={s.headerSubtitle}>
-                        {group.members.length} {group.members.length === 1 ? 'member' : 'members'}
-                    </Text>
+
+                <View style={s.groupHeaderCenter}>
+                    <Text style={s.groupName} numberOfLines={1}>{group.name}</Text>
+                    <View style={s.groupSubRow}>
+                        <Users size={12} color={theme.mutedForeground} />
+                        <Text style={s.groupSubText}>
+                            {group.members.length} {group.members.length === 1 ? 'member' : 'members'}
+                        </Text>
+                        {leader && (
+                            <>
+                                <Text style={s.groupSubDot}>·</Text>
+                                <Crown size={12} color={theme.primary} />
+                                <Text style={s.groupSubText}>{leader.username}</Text>
+                            </>
+                        )}
+                    </View>
                 </View>
-                <View style={{ width: 24 }} />
+
+                {isLeader ? (
+                    <Pressable onPress={openSettings} hitSlop={12} style={s.gearBtn}>
+                        <Settings size={20} color={theme.mutedForeground} />
+                    </Pressable>
+                ) : (
+                    <View style={{ width: 36 }} />
+                )}
             </View>
 
-            {/* Tab Content */}
+            {/* ── Scrollable Body ─────────────────────────────────── */}
             <ScrollView
-                style={s.scrollView}
+                style={s.scroll}
                 contentContainerStyle={s.scrollContent}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -515,60 +338,363 @@ export default function GroupDetailScreen() {
                     />
                 }
             >
-                {activeTab === 'trips' && renderTripsTab()}
-                {activeTab === 'members' && renderMembersTab()}
-                {activeTab === 'invite' && renderInviteTab()}
-                {activeTab === 'settings' && isLeader && renderSettingsTab()}
-            </ScrollView>
-
-            {/* Bottom Tab Bar */}
-            <View style={s.bottomBar}>
-                {availableTabs.map((tab, index) => {
-                    const isActive = activeTab === tab.key;
-                    const IconComponent = tab.icon;
-
-                    const isMidpoint = index === Math.floor(availableTabs.length / 2);
-
-                    return (
-                        <React.Fragment key={tab.key}>
-                            {isMidpoint && (
-                                <Pressable
-                                    onPress={() => {
-                                        showSuccessToast('Coming Soon', 'Create trip flow will be added');
-                                    }}
-                                    style={({ pressed }) => [
-                                        s.fab,
-                                        shadows.retro,
-                                        pressed && s.fabPressed,
+                {/* ── Members Section ──────────────────────────── */}
+                <View style={s.section}>
+                    <Pressable 
+                        style={s.sectionHeaderRow}
+                        onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setMembersExpanded(!membersExpanded);
+                        }}
+                    >
+                        <Users size={16} color={theme.primary} />
+                        <Text style={s.sectionTitle}>Members</Text>
+                        <View style={s.badge}>
+                            <Text style={s.badgeText}>{group.members.length}</Text>
+                        </View>
+                        <View style={{ flex: 1 }} />
+                        {group.members.length > 3 && (
+                            membersExpanded ? (
+                                <ChevronUp size={20} color={theme.mutedForeground} />
+                            ) : (
+                                <ChevronDown size={20} color={theme.mutedForeground} />
+                            )
+                        )}
+                    </Pressable>
+                    <View style={s.memberList}>
+                        {group.members
+                            .sort((a, b) => (a.role === 'Leader' ? -1 : 1))
+                            .slice(0, membersExpanded ? undefined : 3)
+                            .map((member, index, array) => (
+                                <View
+                                    key={member.userId}
+                                    style={[
+                                        s.memberRow,
+                                        index < array.length - 1 && s.memberRowBorder,
+                                        !membersExpanded && group.members.length > 3 && index === array.length - 1 && s.memberRowBorder
                                     ]}
                                 >
-                                    <Plus size={26} color={theme.primaryForeground} />
-                                </Pressable>
-                            )}
-                            <Pressable
-                                onPress={() => setActiveTab(tab.key)}
-                                style={[s.bottomTab, isActive && s.bottomTabActive]}
+                                    {/* Avatar */}
+                                    <View style={[
+                                        s.memberAvatar,
+                                        member.role === 'Leader' && s.memberAvatarLeader,
+                                    ]}>
+                                        <Text style={s.memberAvatarText}>
+                                            {getInitials(member.username)}
+                                        </Text>
+                                    </View>
+
+                                    {/* Info */}
+                                    <View style={s.memberInfo}>
+                                        <View style={s.memberNameRow}>
+                                            <Text style={s.memberName} numberOfLines={1}>
+                                                {member.username}
+                                            </Text>
+                                            {member.role === 'Leader' && (
+                                                <View style={s.leaderBadge}>
+                                                    <Crown size={10} color={theme.primaryForeground} />
+                                                    <Text style={s.leaderBadgeText}>Leader</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <Text style={s.memberEmail} numberOfLines={1}>
+                                            {member.email}
+                                        </Text>
+                                    </View>
+
+                                    {/* Active indicator */}
+                                    <View style={[
+                                        s.memberStatusDot,
+                                        { backgroundColor: member.status === 'Active' ? theme.accent : theme.muted }
+                                    ]} />
+                                </View>
+                            ))}
+                        {!membersExpanded && group.members.length > 3 && (
+                            <Pressable 
+                                style={[s.memberRow, { justifyContent: 'center', paddingVertical: 12 }]}
+                                onPress={() => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setMembersExpanded(true);
+                                }}
                             >
-                                <IconComponent
-                                    size={20}
-                                    color={isActive ? theme.primary : theme.mutedForeground}
-                                />
-                                <Text style={[s.bottomTabText, isActive && s.bottomTabTextActive]}>
-                                    {tab.label}
+                                <Text style={{ fontSize: 13, fontFamily: fonts.medium, color: theme.primary }}>
+                                    View all {group.members.length} members
                                 </Text>
-                                {isActive && <View style={s.bottomTabIndicator} />}
                             </Pressable>
-                        </React.Fragment>
-                    );
-                })}
-            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* ── Quick Actions ───────────────────────────────── */}
+                <View style={s.actionsRow}>
+                    <Pressable
+                        style={({ pressed }) => [
+                            s.actionBtn,
+                            s.actionBtnPrimary,
+                            shadows.retroSm,
+                            pressed && s.actionBtnPressed,
+                        ]}
+                        onPress={() => {
+                            showSuccessToast('Coming Soon', 'Create trip flow will be added');
+                        }}
+                    >
+                        <Plus size={16} color={theme.primaryForeground} />
+                        <Text style={s.actionBtnPrimaryText}>New Trip</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={({ pressed }) => [
+                            s.actionBtn,
+                            s.actionBtnSecondary,
+                            shadows.retroSm,
+                            pressed && s.actionBtnPressed,
+                        ]}
+                        onPress={handleShareInviteClick}
+                    >
+                        <Share2 size={16} color={theme.secondary} />
+                        <Text style={s.actionBtnSecondaryText}>Share Invite</Text>
+                    </Pressable>
+                </View>
+
+                {/* ── Trips Section ───────────────────────────────── */}
+                <View style={s.section}>
+                    <View style={s.sectionHeaderRow}>
+                        <Map size={16} color={theme.primary} />
+                        <Text style={s.sectionTitle}>Trips</Text>
+                        <View style={s.badge}>
+                            <Text style={s.badgeText}>{trips.length}</Text>
+                        </View>
+                    </View>
+
+                    {trips.length === 0 ? (
+                        <View style={s.emptyTrips}>
+                            <Map size={36} color={theme.muted} />
+                            <Text style={s.emptyTitle}>No Trips Yet</Text>
+                            <Text style={s.emptySubtitle}>
+                                Tap "New Trip" to plan your first adventure
+                            </Text>
+                        </View>
+                    ) : (
+                        <View style={s.tripsList}>
+                            {trips.map((trip) => {
+                                const statusColor = STATUS_COLORS[trip.status] || STATUS_COLORS.Planning;
+                                return (
+                                    <Pressable
+                                        key={trip.id}
+                                        style={({ pressed }) => [
+                                            s.tripCard,
+                                            shadows.retroSm,
+                                            pressed && s.tripCardPressed,
+                                        ]}
+                                    >
+                                        {/* Top row: Title + Status */}
+                                        <View style={s.tripTopRow}>
+                                            <Text style={s.tripTitle} numberOfLines={1}>
+                                                {trip.title}
+                                            </Text>
+                                            <View style={[s.statusBadge, { backgroundColor: statusColor.bg }]}>
+                                                <Text style={[s.statusText, { color: statusColor.text }]}>
+                                                    {trip.status}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Bottom row: Date + Budget */}
+                                        <View style={s.tripBottomRow}>
+                                            <View style={s.tripMetaItem}>
+                                                <Calendar size={13} color={theme.mutedForeground} />
+                                                <Text style={s.tripMetaText}>
+                                                    {formatDateRange(trip.planningRangeStart, trip.planningRangeEnd)}
+                                                </Text>
+                                            </View>
+                                            {trip.budget > 0 && (
+                                                <View style={s.tripMetaItem}>
+                                                    <DollarSign size={13} color={theme.mutedForeground} />
+                                                    <Text style={s.tripMetaText}>
+                                                        {trip.budget.toLocaleString()}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                            <ChevronRight
+                                                size={16}
+                                                color={theme.mutedForeground}
+                                                style={{ marginLeft: 'auto' }}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                    )}
+                </View>
+
+                {/* Bottom spacing */}
+                <View style={{ height: 32 }} />
+            </ScrollView>
+
+            {/* ── Invite Dialog Modal ─────────── */}
+            <Modal
+                visible={inviteDialogVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setInviteDialogVisible(false)}
+            >
+                <Pressable style={s.dialogOverlay} onPress={() => setInviteDialogVisible(false)}>
+                    <Pressable style={s.dialogContainer} onPress={() => {}}>
+                        <View style={s.dialogHeader}>
+                            <View style={s.dialogIconBadge}>
+                                <Share2 size={24} color={theme.primary} />
+                            </View>
+                            <Pressable onPress={() => setInviteDialogVisible(false)} hitSlop={12} style={s.dialogCloseBtn}>
+                                <X size={20} color={theme.mutedForeground} />
+                            </Pressable>
+                        </View>
+                        
+                        <Text style={s.dialogTitle}>Invite Friends</Text>
+                        <Text style={s.dialogSubtitle}>
+                            Share this link with your friends so they can join the group "{group.name}".
+                        </Text>
+                        
+                        {invite && !invite.isExpired ? (
+                            <>
+                                <Pressable style={s.dialogLinkBox} onPress={handleCopyLink}>
+                                    <View style={{ flex: 1, paddingRight: 8 }}>
+                                        <Text style={s.dialogLinkText} numberOfLines={1} ellipsizeMode="tail">
+                                            {invite.inviteUrl}
+                                        </Text>
+                                    </View>
+                                    <View style={s.dialogCopyBtn}>
+                                        <Copy size={16} color={theme.primaryForeground} />
+                                    </View>
+                                </Pressable>
+                                
+                                <View style={s.dialogExpiryRow}>
+                                    <Clock size={14} color={theme.mutedForeground} />
+                                    <Text style={s.dialogExpiryText}>
+                                        Expires in {getTimeUntilExpiry(invite.expiresAt)}
+                                    </Text>
+                                </View>
+                            </>
+                        ) : (
+                            <View style={s.dialogExpiredBox}>
+                                <AlertTriangle size={20} color={theme.destructive} />
+                                <Text style={s.dialogExpiredText}>This invite link has expired or is invalid.</Text>
+                            </View>
+                        )}
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            {/* ── Settings Bottom Sheet (Leader only) ─────────── */}
+            <Modal
+                visible={settingsVisible}
+                transparent
+                animationType="none"
+                onRequestClose={closeSettings}
+            >
+                <Pressable style={s.sheetOverlay} onPress={closeSettings}>
+                    <Animated.View
+                        style={[
+                            s.sheetContainer,
+                            {
+                                transform: [{
+                                    translateY: sheetAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [400, 0],
+                                    }),
+                                }],
+                                opacity: sheetAnim.interpolate({
+                                    inputRange: [0, 0.5, 1],
+                                    outputRange: [0, 0.8, 1],
+                                }),
+                            },
+                        ]}
+                    >
+                        <Pressable onPress={() => { /* prevent close */ }}>
+                            {/* Sheet handle */}
+                            <View style={s.sheetHandle} />
+
+                            <View style={s.sheetHeader}>
+                                <Settings size={18} color={theme.primary} />
+                                <Text style={s.sheetTitle}>Group Settings</Text>
+                                <Pressable onPress={closeSettings} hitSlop={12}>
+                                    <X size={20} color={theme.mutedForeground} />
+                                </Pressable>
+                            </View>
+
+                            {/* Rename Section */}
+                            <View style={s.sheetSection}>
+                                <Text style={s.sheetLabel}>GROUP NAME</Text>
+                                {editingName ? (
+                                    <View style={s.renameRow}>
+                                        <TextInput
+                                            style={s.renameInput}
+                                            value={newGroupName}
+                                            onChangeText={setNewGroupName}
+                                            placeholder="Enter group name"
+                                            placeholderTextColor={theme.mutedForeground}
+                                            autoFocus
+                                        />
+                                        <View style={s.renameActions}>
+                                            <Pressable
+                                                onPress={() => {
+                                                    setEditingName(false);
+                                                    setNewGroupName(group?.name || '');
+                                                }}
+                                                style={s.renameCancelBtn}
+                                            >
+                                                <X size={16} color={theme.mutedForeground} />
+                                            </Pressable>
+                                            <Pressable
+                                                onPress={handleRenameGroup}
+                                                disabled={saving || !newGroupName.trim()}
+                                                style={[
+                                                    s.renameSaveBtn,
+                                                    (saving || !newGroupName.trim()) && s.btnDisabled,
+                                                ]}
+                                            >
+                                                {saving ? (
+                                                    <ActivityIndicator size="small" color={theme.primaryForeground} />
+                                                ) : (
+                                                    <Save size={16} color={theme.primaryForeground} />
+                                                )}
+                                            </Pressable>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <Pressable onPress={() => setEditingName(true)} style={s.renameDisplay}>
+                                        <Text style={s.renameDisplayText}>{group.name}</Text>
+                                        <Text style={s.renameTapHint}>Tap to edit</Text>
+                                    </Pressable>
+                                )}
+                            </View>
+
+                            {/* Danger Zone */}
+                            <View style={s.dangerZone}>
+                                <View style={s.dangerHeader}>
+                                    <AlertTriangle size={16} color={theme.destructive} />
+                                    <Text style={s.dangerTitle}>Danger Zone</Text>
+                                </View>
+                                <Text style={s.dangerDesc}>
+                                    Permanently delete this group and all associated data.
+                                </Text>
+                                <Pressable onPress={handleDeleteGroup} style={s.deleteBtn}>
+                                    <Trash2 size={16} color={theme.destructive} />
+                                    <Text style={s.deleteBtnText}>Delete Group</Text>
+                                </Pressable>
+                            </View>
+                        </Pressable>
+                    </Animated.View>
+                </Pressable>
+            </Modal>
         </RetroGrid>
     );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-    // Loading / Error
-    loadingContainer: {
+    // ── Loading / Error ──
+    centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -587,119 +713,232 @@ const s = StyleSheet.create({
         color: theme.destructive,
         marginBottom: 16,
     },
-    retryButton: {
+    retryBtn: {
         paddingHorizontal: 24,
         paddingVertical: 12,
         backgroundColor: theme.primary,
         borderRadius: radius.lg,
     },
-    retryButtonText: {
+    retryBtnText: {
         fontSize: 16,
         fontFamily: fonts.bold,
         color: theme.primaryForeground,
     },
 
-    // Header
-    header: {
+    // ── Group Header ──
+    groupHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingVertical: 14,
+        paddingVertical: 12,
         backgroundColor: `${theme.card}F0`,
         borderBottomWidth: 2,
         borderBottomColor: theme.border,
+        gap: 10,
     },
-    headerCenter: {
-        flex: 1,
+    backBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: radius.lg,
+        backgroundColor: `${theme.primary}10`,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginHorizontal: 12,
     },
-    headerTitle: {
-        fontSize: 18,
+    groupHeaderCenter: {
+        flex: 1,
+    },
+    groupName: {
+        fontSize: 20,
         fontFamily: fonts.bold,
-        color: theme.primary,
+        color: theme.foreground,
     },
-    headerSubtitle: {
+    groupSubRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 2,
+    },
+    groupSubText: {
         fontSize: 12,
         fontFamily: fonts.regular,
         color: theme.mutedForeground,
-        marginTop: 2,
     },
-
-    // Bottom Tab Bar
-    bottomBar: {
-        flexDirection: 'row',
-        borderTopWidth: 2,
-        borderTopColor: theme.border,
-        backgroundColor: theme.card,
-        paddingBottom: 20,
-        paddingTop: 8,
-    },
-    bottomTab: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 6,
-        gap: 3,
-    },
-    bottomTabActive: {
-        // active state handled by text/icon color + indicator
-    },
-    bottomTabText: {
-        fontSize: 11,
-        fontFamily: fonts.medium,
+    groupSubDot: {
+        fontSize: 12,
         color: theme.mutedForeground,
+        marginHorizontal: 2,
     },
-    bottomTabTextActive: {
-        color: theme.primary,
-        fontFamily: fonts.bold,
-    },
-    bottomTabIndicator: {
-        position: 'absolute',
-        top: 0,
-        width: 20,
-        height: 3,
-        borderRadius: 2,
-        backgroundColor: theme.primary,
+    gearBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: radius.lg,
+        backgroundColor: `${theme.muted}80`,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
-    // Scroll
-    scrollView: {
+    // ── Scroll ──
+    scroll: {
         flex: 1,
     },
     scrollContent: {
         paddingHorizontal: 16,
-        paddingBottom: 20,
-    },
-
-    // Tab body
-    tabBody: {
         paddingTop: 16,
     },
 
-    // ── FAB (Create Trip) ──
-    fab: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: theme.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: -28,
-        borderWidth: 3,
-        borderColor: theme.card,
+    // ── Sections ──
+    section: {
+        marginBottom: 20,
     },
-    fabPressed: {
-        transform: [{ scale: 0.92 }],
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+    },
+    badge: {
+        backgroundColor: `${theme.primary}20`,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: radius.full,
+    },
+    badgeText: {
+        fontSize: 11,
+        fontFamily: fonts.bold,
+        color: theme.primary,
     },
 
-    // ── Trips Tab ──
-    tripsList: {
+    // ── Member List ──
+    memberList: {
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.card,
+        overflow: 'hidden',
+    },
+    memberRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         gap: 12,
     },
+    memberRowBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.border,
+    },
+    memberAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: `${theme.primary}15`,
+        borderWidth: 2,
+        borderColor: theme.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    memberAvatarLeader: {
+        borderColor: theme.primary,
+        backgroundColor: `${theme.primary}25`,
+    },
+    memberAvatarText: {
+        fontSize: 14,
+        fontFamily: fonts.bold,
+        color: theme.primary,
+    },
+    memberInfo: {
+        flex: 1,
+        gap: 1,
+    },
+    memberNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    memberName: {
+        fontSize: 14,
+        fontFamily: fonts.semiBold,
+        color: theme.foreground,
+        flexShrink: 1,
+    },
+    memberEmail: {
+        fontSize: 11,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+    },
+    leaderBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderRadius: radius.full,
+        backgroundColor: theme.primary,
+        flexShrink: 0,
+    },
+    leaderBadgeText: {
+        fontSize: 9,
+        fontFamily: fonts.bold,
+        color: theme.primaryForeground,
+    },
+    memberStatusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        flexShrink: 0,
+    },
+
+    // ── Quick Actions ──
+    actionsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 20,
+    },
+    actionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+    },
+    actionBtnPrimary: {
+        backgroundColor: theme.primary,
+        borderColor: theme.primary,
+    },
+    actionBtnSecondary: {
+        backgroundColor: theme.card,
+        borderColor: theme.secondary,
+    },
+    actionBtnPressed: {
+        transform: [{ translateY: -2 }],
+        opacity: 0.9,
+    },
+    actionBtnPrimaryText: {
+        fontSize: 14,
+        fontFamily: fonts.bold,
+        color: theme.primaryForeground,
+    },
+    actionBtnSecondaryText: {
+        fontSize: 14,
+        fontFamily: fonts.bold,
+        color: theme.secondary,
+    },
+
+    // ── Trips List ──
+    tripsList: {
+        gap: 10,
+    },
     tripCard: {
-        padding: 16,
+        padding: 14,
         borderRadius: radius.xl,
         borderWidth: 2,
         borderColor: theme.border,
@@ -709,230 +948,243 @@ const s = StyleSheet.create({
         borderColor: theme.primary,
         transform: [{ translateY: -2 }],
     },
-    tripCardHeader: {
+    tripTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     tripTitle: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: fonts.bold,
         color: theme.foreground,
         marginRight: 8,
     },
     statusBadge: {
         paddingHorizontal: 10,
-        paddingVertical: 4,
+        paddingVertical: 3,
         borderRadius: radius.full,
     },
     statusText: {
         fontSize: 11,
         fontFamily: fonts.semiBold,
     },
-    tripMeta: {
-        gap: 6,
-        marginBottom: 8,
-    },
-    tripMetaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    tripMetaText: {
-        fontSize: 13,
-        fontFamily: fonts.regular,
-        color: theme.mutedForeground,
-    },
-    tripCreatedAt: {
-        fontSize: 11,
-        fontFamily: fonts.regular,
-        color: theme.mutedForeground,
-        marginTop: 4,
-    },
-
-    // ── Members Tab ──
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontFamily: fonts.bold,
-        color: theme.foreground,
-    },
-    sectionCount: {
-        fontSize: 12,
-        fontFamily: fonts.medium,
-        color: theme.mutedForeground,
-    },
-    membersList: {
-        gap: 10,
-    },
-    memberCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 14,
-        borderRadius: radius.xl,
-        borderWidth: 2,
-        borderColor: theme.border,
-        backgroundColor: theme.card,
-    },
-    memberInfo: {
-        flex: 1,
+    tripBottomRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    memberAvatar: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: `${theme.primary}20`,
-        borderWidth: 2,
-        borderColor: theme.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    memberAvatarText: {
-        fontSize: 15,
-        fontFamily: fonts.bold,
-        color: theme.primary,
-    },
-    memberDetails: {
-        flex: 1,
-        gap: 2,
-    },
-    memberNameRow: {
+    tripMetaItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 4,
     },
-    memberName: {
-        fontSize: 15,
-        fontFamily: fonts.semiBold,
-        color: theme.foreground,
-    },
-    memberEmail: {
+    tripMetaText: {
         fontSize: 12,
         fontFamily: fonts.regular,
         color: theme.mutedForeground,
     },
-    leaderBadge: {
+
+    // ── Empty Trips ──
+    emptyTrips: {
+        alignItems: 'center',
+        paddingVertical: 40,
+        paddingHorizontal: 20,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.border,
+        borderStyle: 'dashed',
+        backgroundColor: `${theme.card}80`,
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+        marginTop: 12,
+        marginBottom: 4,
+    },
+    emptySubtitle: {
+        fontSize: 13,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+        textAlign: 'center',
+        lineHeight: 18,
+    },
+
+    // ── Dialog Styles ──
+    dialogOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    dialogContainer: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: theme.card,
+        borderRadius: 24, // custom large radius
+        padding: 24,
+        borderWidth: 2,
+        borderColor: theme.border,
+        ...shadows.retroSm,
+    },
+    dialogHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+    },
+    dialogIconBadge: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: `${theme.primary}15`,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dialogCloseBtn: {
+        backgroundColor: theme.muted,
+        borderRadius: radius.full,
+        padding: 6,
+    },
+    dialogTitle: {
+        fontSize: 22,
+        fontFamily: fonts.bold,
+        color: theme.foreground,
+        marginBottom: 8,
+    },
+    dialogSubtitle: {
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        color: theme.mutedForeground,
+        lineHeight: 20,
+        marginBottom: 24,
+    },
+    dialogLinkBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: radius.full,
-        backgroundColor: theme.primary,
+        backgroundColor: theme.input,
+        borderWidth: 2,
+        borderColor: theme.border,
+        borderRadius: radius.lg,
+        paddingLeft: 14,
+        paddingRight: 6,
+        paddingVertical: 6,
+        marginBottom: 12,
     },
-    leaderBadgeText: {
-        fontSize: 10,
+    dialogLinkText: {
+        fontSize: 14,
+        fontFamily: fonts.medium,
+        color: theme.foreground,
+    },
+    dialogCopyBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: radius.md,
+        backgroundColor: theme.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dialogExpiryRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+    },
+    dialogExpiryText: {
+        fontSize: 13,
+        fontFamily: fonts.medium,
+        color: theme.mutedForeground,
+    },
+    dialogPrimaryBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: theme.primary,
+        paddingVertical: 14,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.primary,
+    },
+    dialogPrimaryBtnText: {
+        fontSize: 16,
         fontFamily: fonts.bold,
         color: theme.primaryForeground,
     },
-    statusDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+    dialogExpiredBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 16,
+        backgroundColor: `${theme.destructive}15`,
+        borderRadius: radius.lg,
+        borderWidth: 2,
+        borderColor: `${theme.destructive}50`,
+    },
+    dialogExpiredText: {
+        flex: 1,
+        fontSize: 14,
+        fontFamily: fonts.medium,
+        color: theme.destructive,
+        lineHeight: 20,
     },
 
-    // ── Invite Tab ──
-    inviteContent: {
-        gap: 16,
+    // ── Settings Bottom Sheet ──
+    sheetOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'flex-end',
     },
-    inviteCard: {
-        padding: 20,
-        borderRadius: radius.xl,
-        borderWidth: 2,
-        borderColor: theme.secondary,
+    sheetContainer: {
         backgroundColor: theme.card,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        borderTopWidth: 2,
+        borderLeftWidth: 2,
+        borderRightWidth: 2,
+        borderColor: theme.border,
     },
-    inviteHeader: {
+    sheetHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: theme.muted,
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 16,
+    },
+    sheetHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         marginBottom: 20,
-        paddingBottom: 12,
-        borderBottomWidth: 2,
-        borderBottomColor: theme.border,
     },
-    inviteTitle: {
+    sheetTitle: {
+        flex: 1,
         fontSize: 18,
         fontFamily: fonts.bold,
         color: theme.foreground,
     },
-    inviteField: {
-        marginBottom: 16,
-    },
-    inviteLabel: {
-        fontSize: 11,
-        fontFamily: fonts.semiBold,
-        color: theme.mutedForeground,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 6,
-    },
-    inviteTokenRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        padding: 12,
-        borderRadius: radius.lg,
-        backgroundColor: theme.input,
-        borderWidth: 2,
-        borderColor: theme.border,
-    },
-    inviteTokenText: {
-        flex: 1,
-        fontSize: 13,
-        fontFamily: fonts.regular,
-        color: theme.foreground,
-    },
-    inviteUrlText: {
-        flex: 1,
-        fontSize: 12,
-        fontFamily: fonts.regular,
-        color: theme.secondary,
-    },
-    copyButton: {
-        padding: 6,
-        borderRadius: radius.md,
-        backgroundColor: `${theme.primary}15`,
-    },
-    inviteExpiryRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-    },
-    inviteExpiryText: {
-        fontSize: 13,
-        fontFamily: fonts.medium,
-    },
 
-    // ── Settings Tab ──
-    settingsCard: {
-        padding: 20,
-        borderRadius: radius.xl,
-        borderWidth: 2,
-        borderColor: theme.border,
-        backgroundColor: theme.card,
-        marginBottom: 20,
+    // ── Sheet Sections ──
+    sheetSection: {
+        marginBottom: 24,
     },
-    settingsCardTitle: {
-        fontSize: 16,
+    sheetLabel: {
+        fontSize: 11,
         fontFamily: fonts.bold,
-        color: theme.foreground,
-        marginBottom: 12,
+        color: theme.mutedForeground,
+        letterSpacing: 0.5,
+        marginBottom: 8,
     },
     renameRow: {
-        gap: 10,
+        gap: 8,
     },
     renameInput: {
         fontSize: 15,
@@ -949,11 +1201,11 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: 8,
-        marginTop: 8,
+        marginTop: 4,
     },
     renameCancelBtn: {
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         borderRadius: radius.lg,
         borderWidth: 2,
         borderColor: theme.border,
@@ -962,8 +1214,8 @@ const s = StyleSheet.create({
         alignItems: 'center',
     },
     renameSaveBtn: {
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         borderRadius: radius.lg,
         backgroundColor: theme.primary,
         justifyContent: 'center',
@@ -988,11 +1240,12 @@ const s = StyleSheet.create({
         fontSize: 11,
         fontFamily: fonts.regular,
         color: theme.mutedForeground,
-        marginTop: 4,
+        marginTop: 2,
     },
 
+    // ── Danger Zone ──
     dangerZone: {
-        padding: 20,
+        padding: 16,
         borderRadius: radius.xl,
         borderWidth: 2,
         borderColor: theme.destructive,
@@ -1001,56 +1254,33 @@ const s = StyleSheet.create({
     dangerHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
+        gap: 6,
+        marginBottom: 8,
     },
     dangerTitle: {
-        fontSize: 18,
+        fontSize: 15,
         fontFamily: fonts.bold,
         color: theme.destructive,
     },
-    dangerDescription: {
-        fontSize: 14,
+    dangerDesc: {
+        fontSize: 13,
         fontFamily: fonts.regular,
         color: theme.foreground,
-        marginBottom: 16,
-        lineHeight: 20,
+        marginBottom: 12,
+        lineHeight: 18,
     },
-    deleteButton: {
+    deleteBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 12,
+        paddingVertical: 10,
         borderRadius: radius.lg,
         backgroundColor: theme.destructive,
-        borderWidth: 2,
-        borderColor: theme.destructive,
     },
-    deleteButtonText: {
-        fontSize: 16,
+    deleteBtnText: {
+        fontSize: 14,
         fontFamily: fonts.bold,
         color: theme.primaryForeground,
-    },
-
-    // ── Empty / Shared ──
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: 60,
-        paddingHorizontal: 24,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontFamily: fonts.bold,
-        color: theme.foreground,
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        fontFamily: fonts.regular,
-        color: theme.mutedForeground,
-        textAlign: 'center',
-        lineHeight: 20,
     },
 });

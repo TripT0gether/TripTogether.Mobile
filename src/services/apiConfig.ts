@@ -5,7 +5,7 @@
  * Implements request/response interceptors for seamless authentication and error handling.
  * 
  * Key Features:
- * - Platform-aware API base URL configuration (Android emulator, iOS simulator, physical device)
+ * - API base URL configuration pointing to deployed backend server
  * - Automatic JWT token injection into request headers
  * - Automatic token refresh on 401 (Unauthorized) responses
  * - Request queueing during token refresh to prevent race conditions
@@ -25,32 +25,18 @@
  * 4. On success → Save new tokens, process queued requests
  * 5. On failure → Clear tokens, reject all queued requests
  * 
- * Platform URLs:
- * - Android Emulator: http://10.0.2.2:5000/api (routes to host machine)
- * - iOS Simulator/Physical Device: http://192.168.1.16:5000/api (local network IP)
- * - Production: https://your-api-domain.com/api
+ * API URL:
+ * - Deployed Server: http://222.255.214.171:5000/api
  * 
  * Used by: All service files for API communication
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from './tokenStorage';
-import { Platform } from 'react-native';
 
-const getDevApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
-  }
-  return 'http://192.168.1.16:5000/api';
-};
-
-const API_BASE_URL = __DEV__
-  ? getDevApiUrl()
-  : 'https://your-api-domain.com/api';
+const API_BASE_URL = 'http://222.255.214.171:5000/api';
 
 console.log('API Configuration:', {
-  platform: Platform.OS,
-  isDev: __DEV__,
   baseUrl: API_BASE_URL,
 });
 
