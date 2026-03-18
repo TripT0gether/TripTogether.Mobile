@@ -71,7 +71,10 @@ import { showSuccessToast, showErrorToast } from '../../src/utils/toast';
 import * as Clipboard from 'expo-clipboard';
 import RetroGrid from '../../src/components/RetroGrid';
 import Header from '../../src/components/Header';
+import CreateTripDialog from '../../src/components/CreateTripDialog';
+import { tripService as tripSvc } from '../../src/services/tripService';
 import { theme, shadows, fonts, radius, spacing } from '../../src/constants/theme';
+import { CreateTripPayload } from '../../src/types/trip.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -102,6 +105,9 @@ export default function GroupDetailScreen() {
 
     // Invite Dialog
     const [inviteDialogVisible, setInviteDialogVisible] = useState(false);
+
+    // Create Trip Dialog
+    const [createTripVisible, setCreateTripVisible] = useState(false);
 
     // Settings bottom sheet
     const [settingsVisible, setSettingsVisible] = useState(false);
@@ -212,6 +218,13 @@ export default function GroupDetailScreen() {
                 },
             ]
         );
+    };
+
+    const handleCreateTrip = async (payload: CreateTripPayload) => {
+        const newTrip = await tripSvc.createTrip(payload);
+        setTrips((prev) => [newTrip, ...prev]);
+        setCreateTripVisible(false);
+        showSuccessToast('Created', `Trip "${newTrip.title}" created`);
     };
 
     // ── Settings Sheet Animation ─────────────────────────────────────────
@@ -426,9 +439,7 @@ export default function GroupDetailScreen() {
                             shadows.retroSm,
                             pressed && s.actionBtnPressed,
                         ]}
-                        onPress={() => {
-                            showSuccessToast('Coming Soon', 'Create trip flow will be added');
-                        }}
+                        onPress={() => setCreateTripVisible(true)}
                     >
                         <Plus size={16} color={theme.primaryForeground} />
                         <Text style={s.actionBtnPrimaryText}>New Trip</Text>
@@ -493,6 +504,7 @@ export default function GroupDetailScreen() {
                                             shadows.retroSm,
                                             pressed && s.tripCardPressed,
                                         ]}
+                                        onPress={() => router.push(`/group/trip/${trip.id}`)}
                                     >
                                         {/* Top row: Title + Status */}
                                         <View style={s.tripTopRow}>
@@ -694,6 +706,14 @@ export default function GroupDetailScreen() {
                     </Animated.View>
                 </Pressable>
             </Modal>
+
+            {/* ── Create Trip Dialog ──────────────────── */}
+            <CreateTripDialog
+                visible={createTripVisible}
+                groupId={groupId!}
+                onClose={() => setCreateTripVisible(false)}
+                onCreateTrip={handleCreateTrip}
+            />
         </RetroGrid>
     );
 }
