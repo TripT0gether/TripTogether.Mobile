@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # TripTogether Development Rules
 
 ## Architecture
@@ -26,3 +30,14 @@
 ## Documentation & Comments
 - **File-level comments**: Add a block at the top explaining purpose, architecture role, key exports, and patterns.
 - **Inline comments**: Avoid line-by-line comments. Code should be self-documenting. Use inline only for complex logic.
+- **Example**:
+  ```tsx
+  /**
+   * AuthContext.tsx
+   * 
+   * Provides authentication state management for the entire app.
+   * Exposes login, logout, and token refresh functionality through context.
+   * Handles JWT storage in secure storage and automatic token refresh.
+   * 
+   * Used by: All protected routes, API interceptors
+   */
