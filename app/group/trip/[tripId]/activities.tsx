@@ -429,14 +429,14 @@ export default function ActivitiesScreen() {
             <Header floating />
 
             <View style={s.screenBody}>
-                {/* ── Title bar ──────────────────────────────────────────── */}
-                <View style={s.titleBar}>
+                {/* ── Title bar — matches Polls screen header ── */}
+                <View style={s.header}>
                     <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
                         <ArrowLeft size={20} color={theme.primary} />
                     </Pressable>
-                    <View style={s.titleCenter}>
-                        <Text style={s.screenTitle} numberOfLines={1}>{trip?.title ?? 'Activities'}</Text>
-                        <Text style={s.screenSub}>Plan your itinerary</Text>
+                    <View style={s.headerCenter}>
+                        <Text style={s.headerTitle} numberOfLines={1}>{trip?.title ?? 'Activities'}</Text>
+                        <Text style={s.headerSub}>Plan your itinerary</Text>
                     </View>
                 </View>
 
@@ -964,16 +964,16 @@ const s = StyleSheet.create({
     centered:   { flex: 1, justifyContent: 'center', alignItems: 'center' },
     screenBody: { flex: 1, flexDirection: 'column' },
 
-    // Title bar
-    titleBar: {
-        flexDirection: 'row', alignItems: 'center', gap: 12,
-        paddingHorizontal: 16, paddingTop: 80, paddingBottom: 12,
-        backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border,
+    // Header — same pattern as Polls screen [tripId].tsx
+    header: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 16, paddingVertical: 12, paddingRight: 114,
+        backgroundColor: `${theme.card}F0`, borderBottomWidth: 2, borderBottomColor: theme.border, gap: 10,
     },
-    backBtn:     { padding: 4 },
-    titleCenter: { flex: 1 },
-    screenTitle: { fontSize: 18, fontFamily: fonts.bold, color: theme.foreground },
-    screenSub:   { fontSize: 12, fontFamily: fonts.regular, color: theme.mutedForeground, marginTop: 1 },
+    backBtn:     { width: 36, height: 36, borderRadius: radius.lg, backgroundColor: `${theme.primary}10`, justifyContent: 'center', alignItems: 'center' },
+    headerCenter: { flex: 1 },
+    headerTitle: { fontSize: 20, fontFamily: fonts.bold, color: theme.foreground },
+    headerSub:   { fontSize: 12, fontFamily: fonts.regular, color: theme.mutedForeground, marginTop: 2 },
 
     // Scroll
     scroll:        { flex: 1 },
