@@ -65,8 +65,8 @@ const TRIP_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
     Cancelled: { bg: `${theme.destructive}20`, text: theme.destructive },
 };
 
-// Available poll types for trip-level polls (Destination deferred until activity setup)
-const AVAILABLE_POLL_TYPES: PollType[] = ['Date', 'Time', 'Budget'];
+// Available poll types for trip-level polls
+const AVAILABLE_POLL_TYPES: PollType[] = ['Date', 'Time', 'Destination', 'Budget'];
 
 export default function TripSetupScreen() {
     const router = useRouter();
@@ -659,16 +659,28 @@ export default function TripSetupScreen() {
                                     const Icon = cfg.icon;
                                     const disabled = existingPollTypes.includes(type);
                                     const selected = newPollType === type;
+                                    const TYPE_HINTS: Record<PollType, string> = {
+                                        Date: 'Vote on travel dates',
+                                        Time: 'Pick a departure time',
+                                        Destination: 'Vote on where to go',
+                                        Budget: 'Agree on a budget',
+                                    };
                                     return (
                                         <Pressable
                                             key={type}
-                                            style={[s.typeOption, selected && { borderColor: cfg.color, backgroundColor: `${cfg.color}10` }, disabled && { opacity: 0.4 }]}
+                                            style={[
+                                                s.typeOption,
+                                                selected && { borderColor: cfg.color, backgroundColor: `${cfg.color}10` },
+                                                disabled && { opacity: 0.4 },
+                                            ]}
                                             onPress={() => !disabled && setNewPollType(type)}
                                             disabled={disabled}
                                         >
-                                            <Icon size={20} color={selected ? cfg.color : theme.mutedForeground} />
-                                            <Text style={[s.typeOptionLabel, selected && { color: cfg.color, fontFamily: fonts.semiBold }]}>{cfg.label}</Text>
-                                            {disabled && <Text style={s.typeOptionHint}>Already exists</Text>}
+                                            <View style={[s.typeOptionIconWrap, { backgroundColor: selected ? `${cfg.color}20` : theme.muted }]}>
+                                                <Icon size={22} color={selected ? cfg.color : theme.mutedForeground} />
+                                            </View>
+                                            <Text style={[s.typeOptionLabel, selected && { color: cfg.color, fontFamily: fonts.bold }]}>{cfg.label}</Text>
+                                            <Text style={s.typeOptionHint}>{disabled ? 'Already exists' : TYPE_HINTS[type]}</Text>
                                         </Pressable>
                                     );
                                 })}
@@ -1002,11 +1014,22 @@ const s = StyleSheet.create({
     modalSubmitBtnAccent: { flex: 1, paddingVertical: 12, borderRadius: radius.lg, backgroundColor: theme.accent, alignItems: 'center' },
     modalSubmitTextAccent: { fontFamily: fonts.semiBold, color: theme.accentForeground, fontSize: 15 },
 
-    // Type grid
-    typeGrid: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-    typeOption: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 14, borderRadius: radius.lg, borderWidth: 2, borderColor: theme.border, backgroundColor: theme.input },
-    typeOptionLabel: { fontSize: 12, fontFamily: fonts.medium, color: theme.mutedForeground },
-    typeOptionHint: { fontSize: 9, fontFamily: fonts.regular, color: theme.mutedForeground },
+    // Type grid — 2×2 wrapped layout
+    typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+    typeOption: {
+        width: '47%',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 8,
+        borderRadius: radius.xl,
+        borderWidth: 2,
+        borderColor: theme.border,
+        backgroundColor: theme.input,
+        gap: 8,
+    },
+    typeOptionIconWrap: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+    typeOptionLabel: { fontSize: 14, fontFamily: fonts.semiBold, color: theme.foreground, textAlign: 'center' },
+    typeOptionHint: { fontSize: 11, fontFamily: fonts.regular, color: theme.mutedForeground, textAlign: 'center' },
 
     // Date picker btn
     datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.input, borderWidth: 2, borderColor: theme.border, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 4 },
