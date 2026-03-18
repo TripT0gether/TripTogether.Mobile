@@ -65,7 +65,7 @@ const TRIP_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
     Cancelled: { bg: `${theme.destructive}20`, text: theme.destructive },
 };
 
-// Available poll types for trip-level polls (Destination requires activityId)
+// Available poll types for trip-level polls (Destination deferred until activity setup)
 const AVAILABLE_POLL_TYPES: PollType[] = ['Date', 'Time', 'Budget'];
 
 export default function TripSetupScreen() {
@@ -100,10 +100,15 @@ export default function TripSetupScreen() {
     const [optEndDate, setOptEndDate] = useState<Date | null>(null);
     const [showOptStartPicker, setShowOptStartPicker] = useState(false);
     const [showOptEndPicker, setShowOptEndPicker] = useState(false);
-    // Time option fields
-    const [optTimeText, setOptTimeText] = useState('');
+    // Time option fields — two native clock pickers for start and end
+    const [optStartTime, setOptStartTime] = useState<Date | null>(null);
+    const [optEndTime, setOptEndTime] = useState<Date | null>(null);
+    const [showOptStartTimePicker, setShowOptStartTimePicker] = useState(false);
+    const [showOptEndTimePicker, setShowOptEndTimePicker] = useState(false);
     // Budget option field
     const [optBudget, setOptBudget] = useState('');
+    // Destination option field
+    const [optDestinationText, setOptDestinationText] = useState('');
 
     // Finalize modal
     const [finalizeVisible, setFinalizeVisible] = useState(false);
@@ -235,8 +240,12 @@ export default function TripSetupScreen() {
         setOptEndDate(null);
         setShowOptStartPicker(false);
         setShowOptEndPicker(false);
-        setOptTimeText('');
+        setOptStartTime(null);
+        setOptEndTime(null);
+        setShowOptStartTimePicker(false);
+        setShowOptEndTimePicker(false);
         setOptBudget('');
+        setOptDestinationText('');
     };
 
     const handleAddOption = async () => {
@@ -245,19 +254,23 @@ export default function TripSetupScreen() {
         try {
             let payload: AddPollOptionPayload = {};
             if (pollDetail.type === 'Date') {
-                if (!optStartDate) { showErrorToast('Required', 'Start date is required'); return; }
+                if (!optStartDate) { showErrorToast('Required', 'Start date is required'); setAddingOption(false); return; }
                 const toStr = (d: Date) => {
-                    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+                    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
                     return `${y}-${m}-${day}`;
                 };
                 payload = { startDate: toStr(optStartDate), endDate: optEndDate ? toStr(optEndDate) : null };
             } else if (pollDetail.type === 'Time') {
-                if (!optTimeText.trim()) { showErrorToast('Required', 'Time description is required'); return; }
-                payload = { textValue: optTimeText.trim() };
+                if (!optStartTime) { showErrorToast('Required', 'Start time is required'); setAddingOption(false); return; }
+                const toTimeStr = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                payload = { startTime: toTimeStr(optStartTime), endTime: optEndTime ? toTimeStr(optEndTime) : null };
             } else if (pollDetail.type === 'Budget') {
                 const val = parseFloat(optBudget);
-                if (!val || val <= 0) { showErrorToast('Required', 'Budget must be a positive number'); return; }
+                if (!val || val <= 0) { showErrorToast('Required', 'Budget must be a positive number'); setAddingOption(false); return; }
                 payload = { budget: val };
+            } else if (pollDetail.type === 'Destination') {
+                if (!optDestinationText.trim()) { showErrorToast('Required', 'Destination name is required'); setAddingOption(false); return; }
+                payload = { textValue: optDestinationText.trim() };
             }
             await pollService.addPollOption(pollDetail.id, payload);
             const detail = await pollService.getPollDetail(pollDetail.id);
@@ -489,9 +502,9 @@ export default function TripSetupScreen() {
                         const finalized = polls.some(p => p.type === type && p.status === 'Finalized');
                         return (
                             <View key={type} style={[s.typeIndicator, exists && { borderColor: cfg.color }, finalized && { backgroundColor: `${cfg.color}15` }]}>
-                                <Icon size={12} color={exists ? cfg.color : theme.mutedForeground} />
+                                <Icon size={16} color={exists ? cfg.color : theme.mutedForeground} />
                                 <Text style={[s.typeIndicatorText, exists && { color: cfg.color }]}>{cfg.label}</Text>
-                                {finalized && <CheckCircle2 size={10} color={cfg.color} />}
+                                {finalized && <CheckCircle2 size={13} color={cfg.color} />}
                             </View>
                         );
                     })}
@@ -689,76 +702,148 @@ export default function TripSetupScreen() {
             </Modal>
 
             {/* ── Add Option Modal ────────────────────────── */}
-            <Modal visible={addOptionVisible} transparent animationType="fade" onRequestClose={() => setAddOptionVisible(false)}>
-                <Pressable style={s.modalBackdrop} onPress={() => setAddOptionVisible(false)}>
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalContainerCenter}>
-                        <Pressable onPress={e => e.stopPropagation()} style={s.modalContainer}>
-                            <View style={[s.modalContent, shadows.retro]}>
-                                <View style={s.modalHeader}>
-                                    <Text style={s.modalTitle}>Add {pollDetail?.type} Option</Text>
-                                    <Pressable onPress={() => setAddOptionVisible(false)} style={s.modalClose}>
+            <Modal visible={addOptionVisible} transparent animationType="slide" onRequestClose={() => setAddOptionVisible(false)}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.optModalOuter}>
+                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setAddOptionVisible(false)} />
+                    <View style={[s.optModalSheet, shadows.retro]}>
+                        {/* Coloured type header */}
+                        {pollDetail && (() => {
+                            const cfg = POLL_TYPE_CONFIG[pollDetail.type];
+                            const Icon = cfg.icon;
+                            return (
+                                <View style={[s.optModalTypeHeader, { backgroundColor: `${cfg.color}15`, borderBottomColor: `${cfg.color}30` }]}>
+                                    <View style={[s.optModalTypeIconWrap, { backgroundColor: `${cfg.color}20` }]}>
+                                        <Icon size={22} color={cfg.color} />
+                                    </View>
+                                    <View>
+                                        <Text style={[s.optModalTypeLabel, { color: cfg.color }]}>{cfg.label} Poll</Text>
+                                        <Text style={s.optModalTypeHint}>Add a new option for members to vote on</Text>
+                                    </View>
+                                    <Pressable onPress={() => setAddOptionVisible(false)} style={s.optModalCloseBtn}>
                                         <X size={18} color={theme.mutedForeground} />
                                     </Pressable>
                                 </View>
+                            );
+                        })()}
 
-                                {pollDetail?.type === 'Date' && (
-                                    <>
-                                        <Text style={s.fieldLabel}>Start Date</Text>
-                                        <Pressable style={[s.datePickerBtn, optStartDate && s.datePickerBtnActive]} onPress={() => setShowOptStartPicker(!showOptStartPicker)}>
-                                            <Calendar size={14} color={optStartDate ? theme.primary : theme.mutedForeground} />
-                                            <Text style={[s.datePickerText, optStartDate && { color: theme.foreground }]}>
-                                                {optStartDate ? optStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select start date'}
-                                            </Text>
-                                        </Pressable>
-                                        {showOptStartPicker && (
-                                            <DateTimePicker value={optStartDate || tomorrow} mode="date" minimumDate={tomorrow} display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                                onChange={(_e, d) => { if (Platform.OS === 'android') setShowOptStartPicker(false); if (d) { setOptStartDate(d); if (optEndDate && d > optEndDate) setOptEndDate(null); } }} />
-                                        )}
-                                        <Text style={[s.fieldLabel, { marginTop: 12 }]}>End Date (optional)</Text>
-                                        <Pressable style={[s.datePickerBtn, optEndDate && s.datePickerBtnActive]} onPress={() => setShowOptEndPicker(!showOptEndPicker)}>
-                                            <Calendar size={14} color={optEndDate ? theme.primary : theme.mutedForeground} />
-                                            <Text style={[s.datePickerText, optEndDate && { color: theme.foreground }]}>
-                                                {optEndDate ? optEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select end date'}
-                                            </Text>
-                                        </Pressable>
-                                        {showOptEndPicker && (
-                                            <DateTimePicker value={optEndDate || optStartDate || tomorrow} mode="date" minimumDate={optStartDate || tomorrow} display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                                onChange={(_e, d) => { if (Platform.OS === 'android') setShowOptEndPicker(false); if (d) setOptEndDate(d); }} />
-                                        )}
-                                    </>
-                                )}
+                        <View style={s.optModalBody}>
+                            {/* DATE type */}
+                            {pollDetail?.type === 'Date' && (
+                                <>
+                                    <Text style={s.optFieldLabel}>Start Date <Text style={s.optFieldRequired}>*</Text></Text>
+                                    <Pressable style={[s.optPickerBtn, optStartDate && s.optPickerBtnActive]} onPress={() => setShowOptStartPicker(!showOptStartPicker)}>
+                                        <Calendar size={16} color={optStartDate ? theme.primary : theme.mutedForeground} />
+                                        <Text style={[s.optPickerText, optStartDate && { color: theme.foreground, fontFamily: fonts.semiBold }]}>
+                                            {optStartDate ? optStartDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Tap to select start date'}
+                                        </Text>
+                                    </Pressable>
+                                    {showOptStartPicker && (
+                                        <DateTimePicker value={optStartDate || tomorrow} mode="date" minimumDate={tomorrow}
+                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                            onChange={(_e, d) => { if (Platform.OS === 'android') setShowOptStartPicker(false); if (d) { setOptStartDate(d); if (optEndDate && d > optEndDate) setOptEndDate(null); } }} />
+                                    )}
 
-                                {pollDetail?.type === 'Time' && (
-                                    <>
-                                        <Text style={s.fieldLabel}>Time Description</Text>
-                                        <TextInput style={s.modalInput} placeholder="e.g. 08:00 - 10:00 or Morning departure" placeholderTextColor={theme.mutedForeground} value={optTimeText} onChangeText={setOptTimeText} />
-                                    </>
-                                )}
+                                    <Text style={[s.optFieldLabel, { marginTop: 16 }]}>End Date <Text style={s.optFieldOptional}>(optional)</Text></Text>
+                                    <Pressable style={[s.optPickerBtn, optEndDate && s.optPickerBtnActive]} onPress={() => setShowOptEndPicker(!showOptEndPicker)}>
+                                        <Calendar size={16} color={optEndDate ? theme.primary : theme.mutedForeground} />
+                                        <Text style={[s.optPickerText, optEndDate && { color: theme.foreground, fontFamily: fonts.semiBold }]}>
+                                            {optEndDate ? optEndDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Tap to select end date'}
+                                        </Text>
+                                    </Pressable>
+                                    {showOptEndPicker && (
+                                        <DateTimePicker value={optEndDate || optStartDate || tomorrow} mode="date" minimumDate={optStartDate || tomorrow}
+                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                            onChange={(_e, d) => { if (Platform.OS === 'android') setShowOptEndPicker(false); if (d) setOptEndDate(d); }} />
+                                    )}
+                                </>
+                            )}
 
-                                {pollDetail?.type === 'Budget' && (
-                                    <>
-                                        <Text style={s.fieldLabel}>Budget Amount</Text>
-                                        <View style={s.budgetInputRow}>
-                                            <View style={s.budgetPrefixIcon}><DollarSign size={16} color={theme.mutedForeground} /></View>
-                                            <TextInput style={[s.modalInput, { flex: 1, paddingLeft: 36 }]} placeholder="0" placeholderTextColor={theme.mutedForeground}
-                                                value={optBudget} onChangeText={t => setOptBudget(t.replace(/[^0-9.]/g, ''))} keyboardType="numeric" />
+                            {/* TIME type — native clock pickers */}
+                            {pollDetail?.type === 'Time' && (
+                                <>
+                                    <Text style={s.optFieldLabel}>Start Time <Text style={s.optFieldRequired}>*</Text></Text>
+                                    <Pressable style={[s.optPickerBtn, optStartTime && s.optPickerBtnActive]} onPress={() => setShowOptStartTimePicker(!showOptStartTimePicker)}>
+                                        <Clock size={16} color={optStartTime ? theme.secondary : theme.mutedForeground} />
+                                        <Text style={[s.optPickerText, optStartTime && { color: theme.foreground, fontFamily: fonts.semiBold }]}>
+                                            {optStartTime ? optStartTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'Tap to select start time'}
+                                        </Text>
+                                    </Pressable>
+                                    {showOptStartTimePicker && (
+                                        <DateTimePicker value={optStartTime || new Date()} mode="time" is24Hour
+                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                            onChange={(_e, d) => { if (Platform.OS === 'android') setShowOptStartTimePicker(false); if (d) setOptStartTime(d); }} />
+                                    )}
+
+                                    <Text style={[s.optFieldLabel, { marginTop: 16 }]}>End Time <Text style={s.optFieldOptional}>(optional)</Text></Text>
+                                    <Pressable style={[s.optPickerBtn, optEndTime && s.optPickerBtnActive]} onPress={() => setShowOptEndTimePicker(!showOptEndTimePicker)}>
+                                        <Clock size={16} color={optEndTime ? theme.secondary : theme.mutedForeground} />
+                                        <Text style={[s.optPickerText, optEndTime && { color: theme.foreground, fontFamily: fonts.semiBold }]}>
+                                            {optEndTime ? optEndTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'Tap to select end time'}
+                                        </Text>
+                                    </Pressable>
+                                    {showOptEndTimePicker && (
+                                        <DateTimePicker value={optEndTime || optStartTime || new Date()} mode="time" is24Hour
+                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                            onChange={(_e, d) => { if (Platform.OS === 'android') setShowOptEndTimePicker(false); if (d) setOptEndTime(d); }} />
+                                    )}
+                                </>
+                            )}
+
+                            {/* DESTINATION type */}
+                            {pollDetail?.type === 'Destination' && (
+                                <>
+                                    <Text style={s.optFieldLabel}>Destination Name <Text style={s.optFieldRequired}>*</Text></Text>
+                                    <TextInput
+                                        style={s.optTextInput}
+                                        placeholder="e.g. Da Nang, Hoi An, Phu Quoc…"
+                                        placeholderTextColor={theme.mutedForeground}
+                                        value={optDestinationText}
+                                        onChangeText={setOptDestinationText}
+                                        autoFocus
+                                    />
+                                </>
+                            )}
+
+                            {/* BUDGET type */}
+                            {pollDetail?.type === 'Budget' && (
+                                <>
+                                    <Text style={s.optFieldLabel}>Budget Amount <Text style={s.optFieldRequired}>*</Text></Text>
+                                    <View style={s.optBudgetRow}>
+                                        <View style={s.optBudgetPrefix}>
+                                            <DollarSign size={18} color={theme.mutedForeground} />
                                         </View>
-                                    </>
-                                )}
+                                        <TextInput
+                                            style={s.optBudgetInput}
+                                            placeholder="0"
+                                            placeholderTextColor={theme.mutedForeground}
+                                            value={optBudget}
+                                            onChangeText={t => setOptBudget(t.replace(/[^0-9.]/g, ''))}
+                                            keyboardType="numeric"
+                                            autoFocus
+                                        />
+                                    </View>
+                                    <Text style={s.optBudgetHint}>Enter estimated cost in USD per person</Text>
+                                </>
+                            )}
 
-                                <View style={[s.modalActions, { marginTop: 16 }]}>
-                                    <Pressable style={s.modalCancelBtn} onPress={() => setAddOptionVisible(false)}>
-                                        <Text style={s.modalCancelText}>Cancel</Text>
-                                    </Pressable>
-                                    <Pressable style={s.modalSubmitBtn} onPress={handleAddOption} disabled={addingOption}>
-                                        {addingOption ? <ActivityIndicator color={theme.primaryForeground} size="small" />
-                                            : <Text style={s.modalSubmitText}>Add</Text>}
-                                    </Pressable>
-                                </View>
+                            {/* Actions */}
+                            <View style={s.optModalActions}>
+                                <Pressable style={s.optCancelBtn} onPress={() => setAddOptionVisible(false)}>
+                                    <Text style={s.optCancelText}>Cancel</Text>
+                                </Pressable>
+                                <Pressable
+                                    style={[s.optSubmitBtn, { backgroundColor: pollDetail ? POLL_TYPE_CONFIG[pollDetail.type].color : theme.primary }]}
+                                    onPress={handleAddOption}
+                                    disabled={addingOption}
+                                >
+                                    {addingOption
+                                        ? <ActivityIndicator color={theme.primaryForeground} size="small" />
+                                        : <Text style={s.optSubmitText}>Add Option</Text>}
+                                </Pressable>
                             </View>
-                        </Pressable>
-                    </KeyboardAvoidingView>
-                </Pressable>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* ── Finalize Modal ──────────────────────────── */}
@@ -861,8 +946,8 @@ const s = StyleSheet.create({
 
     // Type indicators
     typeIndicatorRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-    typeIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.full, borderWidth: 1.5, borderColor: theme.border },
-    typeIndicatorText: { fontSize: 11, fontFamily: fonts.medium, color: theme.mutedForeground },
+    typeIndicator: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.full, borderWidth: 2, borderColor: theme.border },
+    typeIndicatorText: { fontSize: 13, fontFamily: fonts.semiBold, color: theme.mutedForeground },
 
     // Empty
     emptyCard: { alignItems: 'center', paddingVertical: 40, gap: 8 },
@@ -941,4 +1026,78 @@ const s = StyleSheet.create({
     finalizeRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary },
     finalizeOptionText: { flex: 1, fontSize: 14, fontFamily: fonts.regular, color: theme.foreground },
     finalizeVotes: { fontSize: 12, fontFamily: fonts.medium, color: theme.mutedForeground },
+
+    // Add-option bottom sheet modal
+    optModalOuter: { flex: 1, justifyContent: 'flex-end' },
+    optModalSheet: {
+        backgroundColor: theme.card,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        borderTopWidth: 2,
+        borderLeftWidth: 2,
+        borderRightWidth: 2,
+        borderColor: theme.border,
+        overflow: 'hidden',
+    },
+    optModalTypeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+    },
+    optModalTypeIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    optModalTypeLabel: { fontSize: 16, fontFamily: fonts.bold, flex: 1 },
+    optModalTypeHint: { fontSize: 12, fontFamily: fonts.regular, color: theme.mutedForeground, marginTop: 1 },
+    optModalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.muted, justifyContent: 'center', alignItems: 'center' },
+    optModalBody: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
+    // Field labels
+    optFieldLabel: { fontSize: 14, fontFamily: fonts.semiBold, color: theme.foreground, marginBottom: 8 },
+    optFieldRequired: { color: theme.destructive },
+    optFieldOptional: { fontSize: 12, fontFamily: fonts.regular, color: theme.mutedForeground },
+    // Picker buttons (date / time)
+    optPickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: theme.input,
+        borderWidth: 2,
+        borderColor: theme.border,
+        borderRadius: radius.xl,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 4,
+    },
+    optPickerBtnActive: { borderColor: theme.primary, backgroundColor: `${theme.primary}08` },
+    optPickerText: { flex: 1, fontSize: 14, fontFamily: fonts.regular, color: theme.mutedForeground },
+    // Text input (destination)
+    optTextInput: {
+        backgroundColor: theme.input,
+        borderWidth: 2,
+        borderColor: theme.border,
+        borderRadius: radius.xl,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        fontSize: 15,
+        fontFamily: fonts.regular,
+        color: theme.foreground,
+    },
+    // Budget input
+    optBudgetRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.input, borderWidth: 2, borderColor: theme.border, borderRadius: radius.xl, paddingHorizontal: 16, overflow: 'hidden' },
+    optBudgetPrefix: { marginRight: 8 },
+    optBudgetInput: { flex: 1, paddingVertical: 14, fontSize: 20, fontFamily: fonts.bold, color: theme.foreground },
+    optBudgetHint: { fontSize: 12, fontFamily: fonts.regular, color: theme.mutedForeground, marginTop: 8 },
+    // Actions
+    optModalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+    optCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: radius.xl, borderWidth: 2, borderColor: theme.border, alignItems: 'center', backgroundColor: theme.card },
+    optCancelText: { fontFamily: fonts.semiBold, color: theme.mutedForeground, fontSize: 15 },
+    optSubmitBtn: { flex: 2, paddingVertical: 14, borderRadius: radius.xl, alignItems: 'center' },
+    optSubmitText: { fontFamily: fonts.bold, color: theme.primaryForeground, fontSize: 15 },
 });
