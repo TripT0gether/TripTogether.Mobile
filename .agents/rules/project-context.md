@@ -6,7 +6,7 @@ trigger: always_on
 
 ## Project Overview
 
-**TripTogether** is a group travel planning and expense management web application designed to simplify collaborative trip organization. It combines trip planning, democratic decision-making, expense tracking, and photo sharing into a single platform with a distinctive "Clean 80s Retro" aesthetic inspired by vintage computer terminals.
+**TripTogether** is a group travel planning and expense management mobile native app designed to simplify collaborative trip organization. It combines trip planning, democratic decision-making, expense tracking, and photo sharing into a single platform with a distinctive "Clean 80s Retro" aesthetic inspired by vintage computer terminals.
 
 **Core Value Proposition:** Enable groups to plan trips together, vote on destinations and dates, track shared expenses, split costs fairly, and create lasting memories through a shared photo gallery.
 
@@ -147,22 +147,25 @@ The setup wizard guides users through trip planning with democratic decision-mak
 4. **Phase 0:** Members enter their names
 5. **Phase 1:** Admin sets trip name, photo, status
 6. **Phase 2:** 
-   - Admin creates date options
-   - Members vote on dates
+   - Poll have multiple PollType (Date, Time, Destination, Budget) and user can create options to vote from
+   - Admin create Poll Date to vote the go date
+   - Members vote on poll
    - Admin confirms final date
    - Group votes on destination
    - Group selects budget tier
-   - Choose itinerary method (manual/AI)
+   - Choose itinerary method (manual/AI - AI implement later)
 7. **Phase 3:**
-   - Members add activity ideas
+   - Members add activity ideas with drag & drop feature
    - Schedule activities by day/time
    - Heart favorite activities
 8. **Phase 4:**
    - Fill personal packing list
    - Claim shared items
    - Upload payment QR code
-9. **Phase 5:** Review trip summary
-10. **Dashboard:** Navigate to group dashboard
-11. **During Trip:**
-    - Add expenses to wallet
-    - Upload photos to galler
+9. **Phase 5: During trip**  
+   - Trip starting, user start to go
+   - User create some poll to vote on (its difference from the setup Poll, but still the same service)
+   - Edit activity step
+   - Add expenses to wallet
+   - Upload photos to galler
+10. **Finished trip** Review trip summary, with detail combination of all the log from the trip
