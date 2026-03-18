@@ -376,10 +376,10 @@ export default function PackingScreen() {
                 {/* ── Done CTA ── */}
                 <Pressable
                     style={({ pressed }) => [s.doneBtn, pressed && { opacity: 0.8 }]}
-                    onPress={() => router.back()}
+                    onPress={() => router.push(`/group/trip/${tripId}/dashboard` as any)}
                 >
                     <PackageCheck size={16} color={theme.primaryForeground} />
-                    <Text style={s.doneBtnText}>All packed up!</Text>
+                    <Text style={s.doneBtnText}>All packed up! View Dashboard →</Text>
                 </Pressable>
 
                 <View style={{ height: 40 }} />
