@@ -31,3 +31,16 @@ export interface UpdatePackingAssignmentPayload {
     quantity?: number;
     isChecked?: boolean;
 }
+
+export interface PackingAssignmentSummary {
+    packingItemId: string;
+    packingItemName: string;
+    category: string;
+    isShared: boolean;
+    quantityNeeded: number;
+    totalAssigned: number;
+    remaining: number;
+    isFullyAssigned: boolean;
+    assignmentCount: number;
+    assignments: PackingAssignment[];
+}
