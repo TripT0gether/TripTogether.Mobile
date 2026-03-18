@@ -42,6 +42,7 @@ import { Vote as VoteType } from '../../../src/types/vote.types';
 import { showSuccessToast, showErrorToast } from '../../../src/utils/toast';
 import RetroGrid from '../../../src/components/RetroGrid';
 import Header from '../../../src/components/Header';
+import StepProgressBar from '../../../src/components/StepProgressBar';
 import { theme, shadows, fonts, radius } from '../../../src/constants/theme';
 
 const POLL_TYPE_CONFIG: Record<PollType, { icon: any; label: string; color: string }> = {
@@ -67,6 +68,13 @@ const TRIP_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 
 // Available poll types for trip-level polls
 const AVAILABLE_POLL_TYPES: PollType[] = ['Date', 'Time', 'Destination', 'Budget'];
+
+// Trip setup steps
+const SETUP_STEPS = [
+    { label: 'Polls' },
+    { label: 'Activities' },
+    { label: 'Packing' },
+];
 
 export default function TripSetupScreen() {
     const router = useRouter();
@@ -428,6 +436,9 @@ export default function TripSetupScreen() {
                 </View>
             </View>
 
+            {/* ── Step Progress Bar ─────────────────────────── */}
+            <StepProgressBar steps={SETUP_STEPS} currentStep={0} />
+
             {/* ── Content ─────────────────────────────────────── */}
             <ScrollView
                 style={s.scroll}
@@ -636,6 +647,15 @@ export default function TripSetupScreen() {
                         );
                     })
                 )}
+
+                {/* ── Next Step CTA ───────────────────────────── */}
+                <Pressable
+                    style={({ pressed }) => [s.nextStepBtn, pressed && { opacity: 0.8 }]}
+                    onPress={() => router.push(`/group/trip/${tripId}/activities` as any)}
+                >
+                    <Text style={s.nextStepBtnText}>Next: Plan Activities</Text>
+                    <ChevronDown size={16} color={theme.primaryForeground} style={{ transform: [{ rotate: '-90deg' }] }} />
+                </Pressable>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -1123,4 +1143,17 @@ const s = StyleSheet.create({
     optCancelText: { fontFamily: fonts.semiBold, color: theme.mutedForeground, fontSize: 15 },
     optSubmitBtn: { flex: 2, paddingVertical: 14, borderRadius: radius.xl, alignItems: 'center' },
     optSubmitText: { fontFamily: fonts.bold, color: theme.primaryForeground, fontSize: 15 },
+
+    // Next step CTA
+    nextStepBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 24,
+        paddingVertical: 16,
+        borderRadius: radius.xl,
+        backgroundColor: theme.primary,
+    },
+    nextStepBtnText: { fontFamily: fonts.bold, color: theme.primaryForeground, fontSize: 15 },
 });
