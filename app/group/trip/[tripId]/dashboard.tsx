@@ -194,6 +194,9 @@ export default function TripDashboardScreen() {
     // ── Edit FAB
     const [editSheetVisible, setEditSheetVisible] = useState(false);
 
+    // ── Packing tab
+    const [packTab, setPackTab] = useState<'personal' | 'shared'>('personal');
+
     // ─── Load ──────────────────────────────────────────────────────────────────
 
     const loadData = async () => {
@@ -338,8 +341,9 @@ export default function TripDashboardScreen() {
         g.activities.some(a => a.status === 'Scheduled')
     );
     const personalItems = packingItems.filter(i => !i.isShared);
-    const packed = personalItems.filter(i => checkedIds.has(i.id)).length;
-    const totalPack = personalItems.length;
+    const sharedItems   = packingItems.filter(i => i.isShared);
+    const packed     = personalItems.filter(i => checkedIds.has(i.id)).length;
+    const totalPack  = personalItems.length;
 
     // Group packing by category
     const packGroups: Record<string, PackingItem[]> = {};
@@ -347,6 +351,13 @@ export default function TripDashboardScreen() {
         const key = item.category || 'Other';
         if (!packGroups[key]) packGroups[key] = [];
         packGroups[key].push(item);
+    });
+
+    const sharedGroups: Record<string, PackingItem[]> = {};
+    sharedItems.forEach(item => {
+        const key = item.category || 'Other';
+        if (!sharedGroups[key]) sharedGroups[key] = [];
+        sharedGroups[key].push(item);
     });
 
     return (
@@ -590,52 +601,114 @@ export default function TripDashboardScreen() {
                             </Pressable>
                         </View>
 
-                        {/* Progress bar */}
-                        {totalPack > 0 && (
-                            <View style={s.packProgress}>
-                                <View style={s.packProgressHeader}>
-                                    <Text style={s.packProgressLabel}>Progress</Text>
-                                    <Text style={s.packProgressCount}>{packed}/{totalPack} packed</Text>
-                                </View>
-                                <View style={s.progressTrack}>
-                                    <View style={[s.progressFill, { width: `${Math.round((packed / totalPack) * 100)}%` }]} />
-                                </View>
-                            </View>
-                        )}
+                        {/* ── Mini tab bar ── */}
+                        <View style={s.packTabBar}>
+                            <Pressable
+                                style={[s.packTabBtn, packTab === 'personal' && s.packTabBtnActive]}
+                                onPress={() => setPackTab('personal')}
+                            >
+                                <Package size={12} color={packTab === 'personal' ? theme.primary : theme.mutedForeground} />
+                                <Text style={[s.packTabText, packTab === 'personal' && s.packTabTextActive]}>Personal</Text>
+                                {totalPack > 0 && (
+                                    <View style={[s.packTabBadge, packTab === 'personal' && s.packTabBadgeActive]}>
+                                        <Text style={[s.packTabBadgeText, packTab === 'personal' && s.packTabBadgeTextActive]}>
+                                            {packed}/{totalPack}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                            <Pressable
+                                style={[s.packTabBtn, packTab === 'shared' && s.packTabBtnActive]}
+                                onPress={() => setPackTab('shared')}
+                            >
+                                <Users size={12} color={packTab === 'shared' ? theme.secondary : theme.mutedForeground} />
+                                <Text style={[s.packTabText, packTab === 'shared' && { color: theme.secondary, fontFamily: fonts.semiBold }]}>Shared</Text>
+                                {sharedItems.length > 0 && (
+                                    <View style={[s.packTabBadge, packTab === 'shared' && { backgroundColor: `${theme.secondary}20` }]}>
+                                        <Text style={[s.packTabBadgeText, packTab === 'shared' && { color: theme.secondary }]}>
+                                            {sharedItems.length}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                        </View>
 
-                        {Object.keys(packGroups).length === 0 ? (
-                            <EmptySection
-                                label="No packing items added yet"
-                                cta="Add Items"
-                                onCta={() => router.push(`/group/trip/${tripId}/packing` as any)}
-                            />
+                        {packTab === 'personal' ? (
+                            <>
+                                {/* Personal progress bar */}
+                                {totalPack > 0 && (
+                                    <View style={s.packProgress}>
+                                        <View style={s.packProgressHeader}>
+                                            <Text style={s.packProgressLabel}>Progress</Text>
+                                            <Text style={s.packProgressCount}>{packed}/{totalPack} packed</Text>
+                                        </View>
+                                        <View style={s.progressTrack}>
+                                            <View style={[s.progressFill, { width: `${Math.round((packed / totalPack) * 100)}%` }]} />
+                                        </View>
+                                    </View>
+                                )}
+
+                                {Object.keys(packGroups).length === 0 ? (
+                                    <EmptySection
+                                        label="No personal items yet"
+                                        cta="Add Items"
+                                        onCta={() => router.push(`/group/trip/${tripId}/packing` as any)}
+                                    />
+                                ) : (
+                                    Object.entries(packGroups).map(([category, items]) => (
+                                        <View key={category} style={s.packGroup}>
+                                            <Text style={s.packGroupLabel}>{category}</Text>
+                                            {items.map(item => {
+                                                const checked = checkedIds.has(item.id);
+                                                const isToggling = togglingPackId === item.id;
+                                                return (
+                                                    <Pressable
+                                                        key={item.id}
+                                                        style={s.packItemRow}
+                                                        onPress={() => toggleCheck(item.id)}
+                                                        disabled={isToggling}
+                                                    >
+                                                        <View style={[s.packCheckbox, checked && s.packCheckboxChecked]}>
+                                                            {isToggling
+                                                                ? <ActivityIndicator size="small" color={checked ? theme.primaryForeground : theme.primary} />
+                                                                : checked && <Check size={11} color={theme.primaryForeground} />}
+                                                        </View>
+                                                        <Text style={[s.packItemName, checked && s.packItemNameDone]}>
+                                                            {item.name}
+                                                        </Text>
+                                                    </Pressable>
+                                                );
+                                            })}
+                                        </View>
+                                    ))
+                                )}
+                            </>
                         ) : (
-                            Object.entries(packGroups).map(([category, items]) => (
-                                <View key={category} style={s.packGroup}>
-                                    <Text style={s.packGroupLabel}>{category}</Text>
-                                    {items.map(item => {
-                                        const checked = checkedIds.has(item.id);
-                                        const isToggling = togglingPackId === item.id;
-                                        return (
-                                            <Pressable
-                                                key={item.id}
-                                                style={s.packItemRow}
-                                                onPress={() => toggleCheck(item.id)}
-                                                disabled={isToggling}
-                                            >
-                                                <View style={[s.packCheckbox, checked && s.packCheckboxChecked]}>
-                                                    {isToggling
-                                                        ? <ActivityIndicator size="small" color={checked ? theme.primaryForeground : theme.primary} />
-                                                        : checked && <Check size={11} color={theme.primaryForeground} />}
+                            // ── Shared tab
+                            Object.keys(sharedGroups).length === 0 ? (
+                                <EmptySection
+                                    label="No shared items yet"
+                                    cta="Add Shared Items"
+                                    onCta={() => router.push(`/group/trip/${tripId}/packing` as any)}
+                                />
+                            ) : (
+                                Object.entries(sharedGroups).map(([category, items]) => (
+                                    <View key={category} style={s.packGroup}>
+                                        <Text style={s.packGroupLabel}>{category}</Text>
+                                        {items.map(item => (
+                                            <View key={item.id} style={[s.packItemRow, { gap: 10 }]}>
+                                                <View style={[s.packCheckbox, { borderColor: theme.secondary }]}>
+                                                    <Users size={9} color={theme.secondary} />
                                                 </View>
-                                                <Text style={[s.packItemName, checked && s.packItemNameDone]}>
-                                                    {item.name}
-                                                </Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
-                            ))
+                                                <Text style={s.packItemName} numberOfLines={1}>{item.name}</Text>
+                                                {item.quantityNeeded > 1 && (
+                                                    <Text style={s.packItemQty}>×{item.quantityNeeded}</Text>
+                                                )}
+                                            </View>
+                                        ))}
+                                    </View>
+                                ))
+                            )
                         )}
 
                         <Pressable
@@ -937,6 +1010,18 @@ const s = StyleSheet.create({
     itinNotes:     { fontFamily: fonts.regular, fontSize: 11, color: theme.mutedForeground, marginTop: 3, lineHeight: 16 },
 
     // ── Packing
+    packTabBar: { flexDirection: 'row', marginBottom: 12, backgroundColor: theme.muted, borderRadius: radius.lg, padding: 3 },
+    packTabBtn: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 5, paddingVertical: 7, paddingHorizontal: 8, borderRadius: radius.md,
+    },
+    packTabBtnActive: { backgroundColor: theme.card, ...shadows.retroSm },
+    packTabText: { fontFamily: fonts.medium, fontSize: 12, color: theme.mutedForeground },
+    packTabTextActive: { color: theme.primary, fontFamily: fonts.semiBold },
+    packTabBadge: { backgroundColor: theme.border, borderRadius: radius.full, paddingHorizontal: 5, paddingVertical: 1 },
+    packTabBadgeActive: { backgroundColor: `${theme.primary}20` },
+    packTabBadgeText: { fontFamily: fonts.medium, fontSize: 10, color: theme.mutedForeground },
+    packTabBadgeTextActive: { color: theme.primary },
     packProgress: { marginBottom: 12 },
     packProgressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     packProgressLabel: { fontFamily: fonts.semiBold, fontSize: 12, color: theme.foreground },
@@ -946,6 +1031,7 @@ const s = StyleSheet.create({
     packGroup:     { marginBottom: 8 },
     packGroupLabel: { fontFamily: fonts.semiBold, fontSize: 10, color: theme.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
     packItemRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+    packItemQty:   { fontFamily: fonts.regular, fontSize: 11, color: theme.mutedForeground },
     packCheckbox: {
         width: 20, height: 20, borderRadius: radius.sm,
         borderWidth: 2, borderColor: theme.border,
