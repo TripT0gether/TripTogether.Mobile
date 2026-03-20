@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+alwaysApply: true
 ---
 
 # TripTogether - Project Context Documentation
@@ -146,7 +146,7 @@ The setup wizard guides users through trip planning with democratic decision-mak
 3. **Setup:** Admin navigates to `/group/[id]/setup`
 4. **Phase 0:** Members enter their names
 5. **Phase 1:** Admin sets trip name, photo, status
-6. **Phase 2:** 
+6. **Phase 2:**
    - Poll have multiple PollType (Date, Time, Destination, Budget) and user can create options to vote from
    - Admin create Poll Date to vote the go date
    - Members vote on poll
@@ -162,7 +162,7 @@ The setup wizard guides users through trip planning with democratic decision-mak
    - Fill personal packing list
    - Claim shared items
    - Upload payment QR code
-9. **Phase 5: During trip**  
+9. **Phase 5: During trip**
    - Trip starting, user start to go
    - User create some poll to vote on (its difference from the setup Poll, but still the same service)
    - Edit activity step

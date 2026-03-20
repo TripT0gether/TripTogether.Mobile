@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+alwaysApply: true
 ---
 
 # TripTogether Development Rules
@@ -41,3 +41,4 @@ trigger: always_on
    * 
    * Used by: All protected routes, API interceptors
    */
+  ```
