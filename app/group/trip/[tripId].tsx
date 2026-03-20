@@ -59,11 +59,11 @@ const STATUS_BADGE: Record<PollStatus, { bg: string; text: string }> = {
 };
 
 const TRIP_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+    Setup: { bg: `${theme.muted}`, text: theme.mutedForeground },
     Planning: { bg: `${theme.primary}20`, text: theme.primary },
     Confirmed: { bg: `${theme.accent}20`, text: theme.accent },
-    Ongoing: { bg: `${theme.secondary}20`, text: theme.secondary },
+    Active: { bg: `${theme.secondary}20`, text: theme.secondary },
     Completed: { bg: `${theme.mutedForeground}20`, text: theme.mutedForeground },
-    Cancelled: { bg: `${theme.destructive}20`, text: theme.destructive },
 };
 
 // Available poll types for trip-level polls
@@ -134,10 +134,13 @@ export default function TripSetupScreen() {
             setTrip(tripData);
             setCurrentUserId(userData.id);
             setPolls(pollsData.items);
-            // Determine leader status from the group — simplified check
-            // The trip detail doesn't include group members, so we check createdBy or
-            // rely on the API to enforce permissions
             setIsLeader(true); // TODO: pass from parent or fetch group
+
+            // Redirect to dashboard for statuses that no longer need the setup wizard
+            if (['Confirmed', 'Active', 'Completed'].includes(tripData.status)) {
+                router.replace(`/group/trip/${tripId}/dashboard` as any);
+                return;
+            }
         } catch (error: any) {
             showErrorToast('Error', error.message || 'Failed to load trip');
         } finally {
@@ -470,8 +473,8 @@ export default function TripSetupScreen() {
                             <DollarSign size={13} color={'#D4A017'} />
                             <View>
                                 <Text style={s.infoChipLabel}>Budget</Text>
-                                <Text style={[s.infoChipValue, trip.budget > 0 && { color: '#D4A017' }]}>
-                                    {trip.budget > 0 ? `$${trip.budget.toLocaleString()}` : 'Not set'}
+                                <Text style={[s.infoChipValue, (trip.budget ?? 0) > 0 && { color: '#D4A017' }]}>
+                                    {(trip.budget ?? 0) > 0 ? `$${trip.budget!.toLocaleString()}` : 'Not set'}
                                 </Text>
                             </View>
                         </View>
@@ -568,13 +571,18 @@ export default function TripSetupScreen() {
                                                 {pollDetail.options.map(opt => {
                                                     const myVote = myVotes.find(v => v.pollOptionId === opt.id);
                                                     const isVoted = !!myVote;
+                                                    const isFinalized = opt.isSelectFinalized;
                                                     const totalVotes = pollDetail.options.reduce((sum, o) => sum + o.voteCount, 0);
                                                     const pct = totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0;
 
                                                     return (
                                                         <Pressable
                                                             key={opt.id}
-                                                            style={[s.optionRow, isVoted && s.optionRowVoted]}
+                                                            style={[
+                                                                s.optionRow,
+                                                                isVoted && s.optionRowVoted,
+                                                                isFinalized && s.optionRowFinalized,
+                                                            ]}
                                                             onPress={() => pollDetail.status === 'Open' ? handleVote(opt.id) : null}
                                                             disabled={pollDetail.status !== 'Open' || !!votingOptionId}
                                                         >
@@ -587,11 +595,19 @@ export default function TripSetupScreen() {
                                                                     ) : null}
                                                                 </View>
                                                                 <View style={{ flex: 1 }}>
-                                                                    <Text style={[s.optionLabel, isVoted && { color: theme.primary, fontFamily: fonts.semiBold }]}>
-                                                                        {formatOptionLabel(opt, pollDetail.type)}
-                                                                    </Text>
+                                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                                        <Text style={[s.optionLabel, isVoted && { color: theme.primary, fontFamily: fonts.semiBold }]}>
+                                                                            {formatOptionLabel(opt, pollDetail.type)}
+                                                                        </Text>
+                                                                        {isFinalized && (
+                                                                            <View style={s.finalizedBadge}>
+                                                                                <Crown size={10} color={theme.accent} />
+                                                                                <Text style={s.finalizedBadgeText}>Chosen</Text>
+                                                                            </View>
+                                                                        )}
+                                                                    </View>
                                                                     <View style={s.optionBar}>
-                                                                        <View style={[s.optionBarFill, { width: `${pct}%`, backgroundColor: isVoted ? theme.primary : theme.muted }]} />
+                                                                        <View style={[s.optionBarFill, { width: `${pct}%`, backgroundColor: isFinalized ? theme.accent : isVoted ? theme.primary : theme.muted }]} />
                                                                     </View>
                                                                 </View>
                                                                 <Text style={s.optionVoteCount}>{opt.voteCount} ({pct}%)</Text>
@@ -1001,6 +1017,9 @@ const s = StyleSheet.create({
     // Option row
     optionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: `${theme.border}60` },
     optionRowVoted: { backgroundColor: `${theme.primary}06` },
+    optionRowFinalized: { backgroundColor: `${theme.accent}08`, borderLeftWidth: 3, borderLeftColor: theme.accent },
+    finalizedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${theme.accent}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full },
+    finalizedBadgeText: { fontSize: 10, fontFamily: fonts.semiBold, color: theme.accent },
     optionContent: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
     voteIndicator: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: theme.border, justifyContent: 'center', alignItems: 'center' },
     voteIndicatorActive: { backgroundColor: theme.primary, borderColor: theme.primary },

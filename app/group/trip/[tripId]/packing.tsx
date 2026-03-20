@@ -113,6 +113,8 @@ export default function PackingScreen() {
             const shared = items.filter(i => i.isShared);
 
             setPersonalItems(personal);
+            // Initialise checked state from API's isChecked field
+            setCheckedPersonalIds(new Set(personal.filter(i => i.isChecked).map(i => i.id)));
 
             // Build shared view models — load assignments in parallel
             const sharedVMs: SharedItemViewModel[] = shared.map(item => ({
@@ -256,16 +258,39 @@ export default function PackingScreen() {
         }
     };
 
-    // ─── Local check state for personal items (visual-only, no extra endpoint) ──
+    // ─── Check / uncheck personal item (persisted via API) ──────────────────────
     const [checkedPersonalIds, setCheckedPersonalIds] = useState<Set<string>>(new Set());
 
-    const togglePersonalCheck = (id: string) => {
+    const togglePersonalCheck = async (id: string) => {
+        const isNowChecked = !checkedPersonalIds.has(id);
+
+        // Optimistic update
         setCheckedPersonalIds(prev => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+            if (isNowChecked) next.add(id);
+            else next.delete(id);
             return next;
         });
+        setTogglingId(id);
+
+        try {
+            await packingItemService.updatePackingItem(id, { isChecked: isNowChecked });
+            // Update the local item so isChecked reflects truth
+            setPersonalItems(prev =>
+                prev.map(i => i.id === id ? { ...i, isChecked: isNowChecked } : i)
+            );
+        } catch (e: any) {
+            // Rollback optimistic update
+            setCheckedPersonalIds(prev => {
+                const next = new Set(prev);
+                if (isNowChecked) next.delete(id);
+                else next.add(id);
+                return next;
+            });
+            showErrorToast('Error', e.message || 'Could not update item');
+        } finally {
+            setTogglingId(null);
+        }
     };
 
     // ─── Render ────────────────────────────────────────────────────────────────
@@ -356,6 +381,7 @@ export default function PackingScreen() {
                     <PersonalTab
                         items={personalItems}
                         checkedIds={checkedPersonalIds}
+                        togglingId={togglingId}
                         deletingId={deletingId}
                         onToggle={togglePersonalCheck}
                         onDelete={handleDeleteItem}
@@ -479,13 +505,14 @@ export default function PackingScreen() {
 interface PersonalTabProps {
     items: PackingItem[];
     checkedIds: Set<string>;
+    togglingId: string | null;
     deletingId: string | null;
     onToggle: (id: string) => void;
     onDelete: (item: PackingItem) => void;
     onAdd: () => void;
 }
 
-function PersonalTab({ items, checkedIds, deletingId, onToggle, onDelete, onAdd }: PersonalTabProps) {
+function PersonalTab({ items, checkedIds, togglingId, deletingId, onToggle, onDelete, onAdd }: PersonalTabProps) {
     const packed = items.filter(i => checkedIds.has(i.id)).length;
     const total = items.length;
 
@@ -537,8 +564,11 @@ function PersonalTab({ items, checkedIds, deletingId, onToggle, onDelete, onAdd 
                                         style={[s.checkbox, checked && s.checkboxChecked]}
                                         onPress={() => onToggle(item.id)}
                                         hitSlop={8}
+                                        disabled={togglingId === item.id}
                                     >
-                                        {checked && <Check size={12} color={theme.primaryForeground} />}
+                                        {togglingId === item.id
+                                            ? <ActivityIndicator size="small" color={checked ? theme.primaryForeground : theme.primary} />
+                                            : checked && <Check size={12} color={theme.primaryForeground} />}
                                     </Pressable>
                                     <Text style={[s.itemName, checked && s.itemNameChecked]} numberOfLines={1}>
                                         {item.name}

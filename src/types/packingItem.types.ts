@@ -14,6 +14,7 @@ export interface PackingItem {
     name: string;
     category: string;
     isShared: boolean;
+    isChecked: boolean;
     quantityNeeded: number;
     createdAt: string;
     updatedAt: string;
@@ -31,5 +32,6 @@ export interface UpdatePackingItemPayload {
     name?: string;
     category?: string;
     isShared?: boolean;
+    isChecked?: boolean;
     quantityNeeded?: number;
 }

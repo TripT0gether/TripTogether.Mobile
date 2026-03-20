@@ -14,8 +14,8 @@
  *  7. Edit FAB       — floating button → bottom sheet with shortcuts to each setup step
  *
  * Data sources:
- *  tripService.getTripDetail, groupService.getGroupDetail, pollService.getTripPolls,
- *  activityService.getTripActivities, packingItemService.getTripPackingItems
+ *  tripService.getTripDetail (includes embedded activities, polls, packingItems),
+ *  groupService.getGroupDetail, pollService.getPollDetail (for finalized option details)
  *  Weather: https://api.open-meteo.com + https://nominatim.openstreetmap.org
  *
  * Used by: Packing screen "All packed up!" CTA, group dashboard "Open Trip" button
@@ -37,7 +37,6 @@ import {
 import { tripService } from '../../../../src/services/tripService';
 import { groupService } from '../../../../src/services/groupService';
 import { pollService } from '../../../../src/services/pollService';
-import { activityService } from '../../../../src/services/activityService';
 import { packingItemService } from '../../../../src/services/packingItemService';
 import Header from '../../../../src/components/Header';
 import RetroGrid from '../../../../src/components/RetroGrid';
@@ -46,7 +45,6 @@ import { showErrorToast } from '../../../../src/utils/toast';
 
 import { TripDetail } from '../../../../src/types/trip.types';
 import { GroupDetail } from '../../../../src/types/group.types';
-import { PollDetail, PollOption } from '../../../../src/types/poll.types';
 import { ActivityGroup, Activity, ActivityCategory } from '../../../../src/types/activity.types';
 import { PackingItem } from '../../../../src/types/packingItem.types';
 
@@ -200,47 +198,59 @@ export default function TripDashboardScreen() {
 
     const loadData = async () => {
         try {
-            const [tripData, pollsData, activitiesData, packingData] = await Promise.all([
-                tripService.getTripDetail(tripId!),
-                pollService.getTripPolls(tripId!, { pageSize: 50 }),
-                activityService.getTripActivities(tripId!),
-                packingItemService.getTripPackingItems(tripId!),
-            ]);
-
+            const tripData = await tripService.getTripDetail(tripId!);
             setTrip(tripData);
-            setActivityGroups(activitiesData.filter(g => g.activities.some(a => a.status === 'Scheduled')));
-            setPackingItems(packingData);
 
-            // Fetch group
+            // Use embedded activities — filter only scheduled ones for the itinerary view
+            const scheduledActivities = (tripData.activities ?? []).filter(a => a.status === 'Scheduled');
+            // Group by date for the itinerary
+            const grouped: Record<string, ActivityGroup> = {};
+            scheduledActivities.forEach(act => {
+                const day = act.date ?? 'unknown';
+                if (!grouped[day]) {
+                    grouped[day] = { date: day, activities: [], totalActivities: 0 };
+                }
+                // Cast to Activity shape (compatible subset)
+                grouped[day].activities.push(act as any);
+                grouped[day].totalActivities++;
+            });
+            setActivityGroups(Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date)));
+
+            // Use embedded packing items; initialise checked state from API isChecked field
+            const packData = tripData.packingItems ?? [];
+            setPackingItems(packData as any);
+            setCheckedIds(new Set(packData.filter(p => p.isChecked).map(p => p.id)));
+
+            // Fetch group detail (not embedded in TripDetail)
             const groupData = await groupService.getGroupDetail(tripData.groupId);
             setGroup(groupData);
 
-            // Extract summary from finalized polls
-            const allPolls = pollsData.items;
-            const finalizedIds = allPolls.filter(p => p.status === 'Finalized').map(p => p.id);
+            // Extract summary from embedded polls (finalized ones)
+            const allPolls = tripData.polls ?? [];
+            const finalizedPolls = allPolls.filter(p => p.status === 'Finalized');
 
-            let destination: string | null = null;
+            let destination: string | null = tripData.location ?? null;
             let startDate: string | null = tripData.startDate;
             let endDate: string | null = tripData.endDate;
-            let budgetAmt: number | null = tripData.budget > 0 ? tripData.budget : null;
+            let budgetAmt: number | null = (tripData.budget ?? 0) > 0 ? tripData.budget : null;
             let budgetLbl: string | null = budgetAmt ? budgetLabel(budgetAmt) : null;
 
-            if (finalizedIds.length > 0) {
-                const details = await Promise.all(finalizedIds.map(id => pollService.getPollDetail(id)));
+            // For finalized polls, fetch details to get the winning option via isSelectFinalized
+            if (finalizedPolls.length > 0) {
+                const details = await Promise.all(finalizedPolls.map(p => pollService.getPollDetail(p.id)));
                 for (const detail of details) {
-                    // Pick the option with highest votes as the "winner"
-                    const winner = [...detail.options].sort((a, b) => b.voteCount - a.voteCount)[0];
+                    // Prefer the option flagged as finalized; fall back to highest votes
+                    const winner = detail.options.find(o => o.isSelectFinalized)
+                        ?? [...detail.options].sort((a, b) => b.voteCount - a.voteCount)[0];
                     if (!winner) continue;
-                    if (detail.type === 'Destination' && winner.textValue) {
-                        destination = winner.textValue;
-                    }
+                    if (detail.type === 'Destination' && winner.textValue) destination = winner.textValue;
                     if (detail.type === 'Date') {
                         if (winner.startDate) startDate = winner.startDate;
                         if (winner.endDate)   endDate   = winner.endDate;
                     }
                     if (detail.type === 'Budget' && winner.budget) {
-                        budgetAmt  = winner.budget;
-                        budgetLbl  = budgetLabel(winner.budget);
+                        budgetAmt = winner.budget;
+                        budgetLbl = budgetLabel(winner.budget);
                     }
                 }
             }
@@ -275,13 +285,37 @@ export default function TripDashboardScreen() {
 
     // ─── Packing check ─────────────────────────────────────────────────────────
 
-    const toggleCheck = (id: string) => {
+    const [togglingPackId, setTogglingPackId] = useState<string | null>(null);
+
+    const toggleCheck = async (id: string) => {
+        const isNowChecked = !checkedIds.has(id);
+
+        // Optimistic update
         setCheckedIds(prev => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+            if (isNowChecked) next.add(id);
+            else next.delete(id);
             return next;
         });
+        setTogglingPackId(id);
+
+        try {
+            await packingItemService.updatePackingItem(id, { isChecked: isNowChecked });
+            setPackingItems(prev =>
+                prev.map(i => i.id === id ? { ...i, isChecked: isNowChecked } : i)
+            );
+        } catch (e: any) {
+            // Rollback
+            setCheckedIds(prev => {
+                const next = new Set(prev);
+                if (isNowChecked) next.delete(id);
+                else next.add(id);
+                return next;
+            });
+            showErrorToast('Error', e.message || 'Could not update item');
+        } finally {
+            setTogglingPackId(null);
+        }
     };
 
     // ─── Loading ───────────────────────────────────────────────────────────────
@@ -360,8 +394,8 @@ export default function TripDashboardScreen() {
                                     <Text style={s.heroTitle}>{trip?.title ?? 'Trip'}</Text>
                                     <Text style={s.heroSub}>{group?.name ?? ''} · {members.length} members</Text>
                                 </View>
-                                <View style={[s.statusBadge, trip?.status === 'Confirmed' && s.statusBadgeConfirmed]}>
-                                    <Text style={s.statusBadgeText}>{trip?.status ?? 'Planning'}</Text>
+                                <View style={[s.statusBadge, ['Confirmed', 'Active', 'Completed'].includes(trip?.status ?? '') && s.statusBadgeConfirmed]}>
+                                    <Text style={s.statusBadgeText}>{trip?.status ?? 'Setup'}</Text>
                                 </View>
                             </View>
 
@@ -581,14 +615,18 @@ export default function TripDashboardScreen() {
                                     <Text style={s.packGroupLabel}>{category}</Text>
                                     {items.map(item => {
                                         const checked = checkedIds.has(item.id);
+                                        const isToggling = togglingPackId === item.id;
                                         return (
                                             <Pressable
                                                 key={item.id}
                                                 style={s.packItemRow}
                                                 onPress={() => toggleCheck(item.id)}
+                                                disabled={isToggling}
                                             >
                                                 <View style={[s.packCheckbox, checked && s.packCheckboxChecked]}>
-                                                    {checked && <Check size={11} color={theme.primaryForeground} />}
+                                                    {isToggling
+                                                        ? <ActivityIndicator size="small" color={checked ? theme.primaryForeground : theme.primary} />
+                                                        : checked && <Check size={11} color={theme.primaryForeground} />}
                                                 </View>
                                                 <Text style={[s.packItemName, checked && s.packItemNameDone]}>
                                                     {item.name}

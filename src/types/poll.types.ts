@@ -53,6 +53,7 @@ export interface PollOption {
     startTime: string | null;
     endTime: string | null;
     timeOfDay: TimeOfDay | null;
+    isSelectFinalized: boolean;
     voteCount: number;
     createdAt: string;
 }
