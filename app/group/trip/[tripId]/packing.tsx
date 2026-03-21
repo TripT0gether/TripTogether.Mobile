@@ -28,11 +28,13 @@ import {
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import {
     ArrowLeft, Plus, Package, Users, Check, Trash2, X,
-    PackageCheck, UserCheck,
+    PackageCheck, UserCheck, Crown,
 } from 'lucide-react-native';
 import { packingItemService } from '../../../../src/services/packingItemService';
 import { packingAssignmentService } from '../../../../src/services/packingAssignmentService';
 import { userService } from '../../../../src/services/userService';
+import { tripService } from '../../../../src/services/tripService';
+import { groupService } from '../../../../src/services/groupService';
 import Header from '../../../../src/components/Header';
 import StepProgressBar from '../../../../src/components/StepProgressBar';
 import RetroGrid from '../../../../src/components/RetroGrid';
@@ -91,6 +93,11 @@ export default function PackingScreen() {
     const [sharedItems, setSharedItems] = useState<SharedItemViewModel[]>([]);
     const [claimingId, setClaimingId] = useState<string | null>(null); // packingItemId being claimed/unclaimed
 
+    // ── Leader / group tracking
+    const [isLeader, setIsLeader] = useState(false);
+    const [groupId, setGroupId] = useState<string | null>(null);
+    const [confirmingTrip, setConfirmingTrip] = useState(false);
+
     // ── Add item sheet
     const [addVisible, setAddVisible] = useState(false);
     const [addMode, setAddMode] = useState<TabKey>('personal');
@@ -103,11 +110,22 @@ export default function PackingScreen() {
 
     const loadData = async () => {
         try {
-            const [items, userData] = await Promise.all([
+            const [items, userData, tripData] = await Promise.all([
                 packingItemService.getTripPackingItems(tripId!),
                 userService.getCurrentUser(),
+                tripService.getTripDetail(tripId!),
             ]);
             setCurrentUserId(userData.id);
+            setGroupId(tripData.groupId);
+
+            // Resolve leader status via group member roles
+            try {
+                const groupData = await groupService.getGroupDetail(tripData.groupId);
+                const member = groupData.members.find(m => m.userId === userData.id);
+                setIsLeader(member?.role === 'Leader');
+            } catch {
+                setIsLeader(false);
+            }
 
             const personal = items.filter(i => !i.isShared);
             const shared = items.filter(i => i.isShared);
@@ -293,6 +311,21 @@ export default function PackingScreen() {
         }
     };
 
+    // ─── Confirm Trip (leader only) ────────────────────────────────────────────
+
+    const handleConfirmTrip = async () => {
+        setConfirmingTrip(true);
+        try {
+            await tripService.updateTripStatus(tripId!, 'Confirmed');
+            showSuccessToast('Trip Confirmed!', 'All set — have a great trip!');
+            router.push(`/group/trip/${tripId}/dashboard` as any);
+        } catch (e: any) {
+            showErrorToast('Error', e.message || 'Could not confirm trip');
+        } finally {
+            setConfirmingTrip(false);
+        }
+    };
+
     // ─── Render ────────────────────────────────────────────────────────────────
 
     const packedCount = personalItems.filter(i => checkedPersonalIds.has(i.id)).length;
@@ -399,14 +432,34 @@ export default function PackingScreen() {
                     />
                 )}
 
-                {/* ── Done CTA ── */}
-                <Pressable
-                    style={({ pressed }) => [s.doneBtn, pressed && { opacity: 0.8 }]}
-                    onPress={() => router.push(`/group/trip/${tripId}/dashboard` as any)}
-                >
-                    <PackageCheck size={16} color={theme.primaryForeground} />
-                    <Text style={s.doneBtnText}>All packed up! View Dashboard →</Text>
-                </Pressable>
+                {/* ── Leader-only: Confirm Trip CTA ── */}
+                {isLeader ? (
+                    <Pressable
+                        style={({ pressed }) => [s.doneBtn, confirmingTrip && { opacity: 0.7 }, pressed && { opacity: 0.8 }]}
+                        onPress={handleConfirmTrip}
+                        disabled={confirmingTrip}
+                    >
+                        {confirmingTrip ? (
+                            <ActivityIndicator size="small" color={theme.primaryForeground} />
+                        ) : (
+                            <>
+                                <Crown size={16} color={theme.primaryForeground} />
+                                <Text style={s.doneBtnText}>Confirm Trip &amp; Move to Dashboard</Text>
+                            </>
+                        )}
+                    </Pressable>
+                ) : null}
+
+                {/* ── Back to Group shortcut (all users) ── */}
+                {groupId ? (
+                    <Pressable
+                        style={({ pressed }) => [s.backToGroupBtn, pressed && { opacity: 0.8 }]}
+                        onPress={() => router.push(`/group/${groupId}` as any)}
+                    >
+                        <ArrowLeft size={15} color={theme.mutedForeground} />
+                        <Text style={s.backToGroupBtnText}>Back to Group</Text>
+                    </Pressable>
+                ) : null}
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -909,6 +962,14 @@ const s = StyleSheet.create({
         ...shadows.retro,
     },
     doneBtnText: { fontFamily: fonts.bold, fontSize: 15, color: theme.primaryForeground },
+
+    // ── Back to Group shortcut
+    backToGroupBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        marginTop: 10, paddingVertical: 12, borderRadius: radius.lg,
+        borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.card,
+    },
+    backToGroupBtnText: { fontFamily: fonts.medium, color: theme.mutedForeground, fontSize: 14 },
 
     // ── Empty state
     emptyCard: {

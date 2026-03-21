@@ -472,6 +472,18 @@ export default function ActivitiesScreen() {
                         <Text style={s.nextBtnText}>Next: Packing List</Text>
                         <ChevronRight size={16} color={theme.primaryForeground} />
                     </Pressable>
+
+                    {/* Back to Group shortcut */}
+                    {trip?.groupId ? (
+                        <Pressable
+                            style={({ pressed }) => [s.backToGroupBtn, pressed && { opacity: 0.8 }]}
+                            onPress={() => router.push(`/group/${trip.groupId}` as any)}
+                        >
+                            <ArrowLeft size={15} color={theme.mutedForeground} />
+                            <Text style={s.backToGroupBtnText}>Back to Group</Text>
+                        </Pressable>
+                    ) : null}
+
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </View>
@@ -1046,6 +1058,14 @@ const s = StyleSheet.create({
         paddingVertical: 15, borderRadius: radius.xl, backgroundColor: theme.primary, marginTop: 8,
     },
     nextBtnText: { fontSize: 15, fontFamily: fonts.bold, color: theme.primaryForeground },
+
+    // Back to Group shortcut
+    backToGroupBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        marginTop: 10, paddingVertical: 12, borderRadius: radius.xl,
+        borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.card,
+    },
+    backToGroupBtnText: { fontFamily: fonts.medium, color: theme.mutedForeground, fontSize: 14 },
 
     // Sheet
     sheetOuter:    { flex: 1, justifyContent: 'flex-end' },

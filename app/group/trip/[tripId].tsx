@@ -673,6 +673,17 @@ export default function TripSetupScreen() {
                     <ChevronDown size={16} color={theme.primaryForeground} style={{ transform: [{ rotate: '-90deg' }] }} />
                 </Pressable>
 
+                {/* ── Back to Group shortcut ───────────────────── */}
+                {trip?.groupId ? (
+                    <Pressable
+                        style={({ pressed }) => [s.backToGroupBtn, pressed && { opacity: 0.8 }]}
+                        onPress={() => router.push(`/group/${trip.groupId}` as any)}
+                    >
+                        <ArrowLeft size={15} color={theme.mutedForeground} />
+                        <Text style={s.backToGroupBtnText}>Back to Group</Text>
+                    </Pressable>
+                ) : null}
+
                 <View style={{ height: 40 }} />
             </ScrollView>
 
@@ -1175,4 +1186,19 @@ const s = StyleSheet.create({
         backgroundColor: theme.primary,
     },
     nextStepBtnText: { fontFamily: fonts.bold, color: theme.primaryForeground, fontSize: 15 },
+
+    // Back to Group shortcut
+    backToGroupBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 10,
+        paddingVertical: 12,
+        borderRadius: radius.xl,
+        borderWidth: 1.5,
+        borderColor: theme.border,
+        backgroundColor: theme.card,
+    },
+    backToGroupBtnText: { fontFamily: fonts.medium, color: theme.mutedForeground, fontSize: 14 },
 });
