@@ -336,8 +336,11 @@ export default function FriendsScreen() {
                 </View>
             ) : (
                 <View style={styles.resultsList}>
-                    {searchResults.map((user) => (
-                        <View key={user.id} style={[styles.userCard, shadows.retroSm]}>
+                    {searchResults.map((user, index) => (
+                        <View
+                            key={user.id ? String(user.id) : `search-user-${user.email}-${index}`}
+                            style={[styles.userCard, shadows.retroSm]}
+                        >
                             <View style={styles.userInfo}>
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>{getInitials(user.username)}</Text>
@@ -431,8 +434,15 @@ export default function FriendsScreen() {
                     </View>
                 ) : (
                     <View style={styles.resultsList}>
-                        {receivedRequests.map((request) => (
-                            <View key={request.friendshipId} style={[styles.requestCard, shadows.retroSm]}>
+                        {receivedRequests.map((request, index) => (
+                            <View
+                                key={
+                                    request.friendshipId
+                                        ? String(request.friendshipId)
+                                        : `received-${request.userId}-${index}`
+                                }
+                                style={[styles.requestCard, shadows.retroSm]}
+                            >
                                 <View style={styles.userInfo}>
                                     <View style={styles.avatar}>
                                         <Text style={styles.avatarText}>{getInitials(request.username)}</Text>
@@ -492,8 +502,15 @@ export default function FriendsScreen() {
                     </View>
                 ) : (
                     <View style={styles.resultsList}>
-                        {sentRequests.map((request) => (
-                            <View key={request.friendshipId} style={[styles.sentCard, shadows.retroSm]}>
+                        {sentRequests.map((request, index) => (
+                            <View
+                                key={
+                                    request.friendshipId
+                                        ? String(request.friendshipId)
+                                        : `sent-${request.userId}-${index}`
+                                }
+                                style={[styles.sentCard, shadows.retroSm]}
+                            >
                                 <View style={styles.userInfo}>
                                     <View style={styles.avatar}>
                                         <Text style={styles.avatarText}>{getInitials(request.username)}</Text>
@@ -533,8 +550,15 @@ export default function FriendsScreen() {
                 </View>
             ) : (
                 <View style={styles.resultsList}>
-                    {sentRequests.map((request) => (
-                        <View key={request.friendshipId} style={[styles.sentCard, shadows.retroSm]}>
+                    {sentRequests.map((request, index) => (
+                        <View
+                            key={
+                                request.friendshipId
+                                    ? String(request.friendshipId)
+                                    : `sent-tab-${request.userId}-${index}`
+                            }
+                            style={[styles.sentCard, shadows.retroSm]}
+                        >
                             <View style={styles.userInfo}>
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>{getInitials(request.username)}</Text>
@@ -602,8 +626,15 @@ export default function FriendsScreen() {
                     </View>
                 ) : (
                     <View style={styles.resultsList}>
-                        {filteredFriends.map((friend) => (
-                            <View key={friend.friendId} style={[styles.friendCard, shadows.retroSm]}>
+                        {filteredFriends.map((friend, index) => (
+                            <View
+                                key={
+                                    friend.friendId
+                                        ? String(friend.friendId)
+                                        : `friend-${friend.username}-${friend.email}-${index}`
+                                }
+                                style={[styles.friendCard, shadows.retroSm]}
+                            >
                                 <View style={styles.userInfo}>
                                     <View style={styles.avatar}>
                                         <Text style={styles.avatarText}>{getInitials(friend.username)}</Text>
@@ -637,6 +668,13 @@ export default function FriendsScreen() {
 
     const tabOrder: Tab[] = ['friends', 'requests', 'search'];
     const currentTabIndex = tabOrder.indexOf(activeTab);
+
+    const tabContent =
+        activeTab === 'friends'
+            ? renderFriendsTab()
+            : activeTab === 'requests'
+              ? renderRequestsTab()
+              : renderSearchTab();
 
     const panResponder = PanResponder.create({
         onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -710,9 +748,7 @@ export default function FriendsScreen() {
                         />
                     }
                 >
-                    {activeTab === 'friends' && renderFriendsTab()}
-                    {activeTab === 'requests' && renderRequestsTab()}
-                    {activeTab === 'search' && renderSearchTab()}
+                    {tabContent}
                 </ScrollView>
             </View>
         </RetroGrid>
