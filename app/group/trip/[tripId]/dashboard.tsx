@@ -24,7 +24,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, Pressable, ScrollView, ActivityIndicator,
-    StyleSheet, RefreshControl, Modal, Platform, Image,
+    StyleSheet, RefreshControl, Modal, Platform, Image as RNImage,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import {
@@ -38,6 +38,8 @@ import { tripService } from '../../../../src/services/tripService';
 import { groupService } from '../../../../src/services/groupService';
 import { pollService } from '../../../../src/services/pollService';
 import { packingItemService } from '../../../../src/services/packingItemService';
+import { packingAssignmentService } from '../../../../src/services/packingAssignmentService';
+import { userService } from '../../../../src/services/userService';
 import Header from '../../../../src/components/Header';
 import RetroGrid from '../../../../src/components/RetroGrid';
 import { theme, shadows, fonts, radius } from '../../../../src/constants/theme';
@@ -47,6 +49,7 @@ import { TripDetail } from '../../../../src/types/trip.types';
 import { GroupDetail } from '../../../../src/types/group.types';
 import { ActivityGroup, Activity, ActivityCategory } from '../../../../src/types/activity.types';
 import { PackingItem } from '../../../../src/types/packingItem.types';
+import { PackingAssignmentSummary } from '../../../../src/types/packingAssignment.types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -150,24 +153,79 @@ async function geocodeLocation(query: string): Promise<{ lat: number; lon: numbe
     }
 }
 
-async function fetchWeather(lat: number, lon: number): Promise<WeatherDay[]> {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+/** Open-Meteo free tier maximum forecast horizon in days */
+const FORECAST_MAX_DAYS = 16;
+
+/**
+ * Returns today's date as a YYYY-MM-DD string in local time.
+ */
+function todayIso(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Adds `n` days to a YYYY-MM-DD string and returns the result as YYYY-MM-DD.
+ */
+function addDays(iso: string, n: number): string {
+    const d = new Date(iso);
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+type WeatherFetchResult =
+    | { status: 'ok';         days: WeatherDay[] }
+    | { status: 'too_far';    availableFrom: string }
+    | { status: 'error' };
+
+async function fetchWeather(
+    lat: number,
+    lon: number,
+    startDate?: string | null,
+    endDate?: string | null,
+): Promise<WeatherFetchResult> {
+    const today = todayIso();
+    const maxDate = addDays(today, FORECAST_MAX_DAYS);
+
+    // Trip hasn't entered the 16-day forecast window yet
+    if (startDate && startDate > maxDate) {
+        return { status: 'too_far', availableFrom: startDate };
+    }
+
+    let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
         `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
-        `&timezone=auto&forecast_days=5`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const { time, weathercode, temperature_2m_max, temperature_2m_min, precipitation_probability_max } = data.daily;
-    return (time as string[]).slice(0, 3).map((date: string, i: number) => {
-        const d = new Date(date);
-        return {
-            date,
-            dayName: DAY_NAMES[d.getDay()],
-            wmoCode: weathercode[i],
-            maxTemp: Math.round(temperature_2m_max[i]),
-            minTemp: Math.round(temperature_2m_min[i]),
-            rainChance: precipitation_probability_max[i] ?? 0,
-        };
-    });
+        `&timezone=auto`;
+
+    if (startDate) {
+        // Clamp end date to the 16-day window so we never send an out-of-range request
+        const clampedEnd = endDate && endDate < maxDate ? endDate : maxDate;
+        url += `&start_date=${startDate}&end_date=${clampedEnd}`;
+    } else {
+        url += `&forecast_days=7`;
+    }
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return { status: 'error' };
+        const data = await res.json();
+        if (!data.daily) return { status: 'error' };
+
+        const { time, weathercode, temperature_2m_max, temperature_2m_min, precipitation_probability_max } = data.daily;
+        const days: WeatherDay[] = (time as string[]).map((date: string, i: number) => {
+            const d = new Date(date);
+            return {
+                date,
+                dayName: DAY_NAMES[d.getDay()],
+                wmoCode: weathercode[i],
+                maxTemp: Math.round(temperature_2m_max[i]),
+                minTemp: Math.round(temperature_2m_min[i]),
+                rainChance: precipitation_probability_max[i] ?? 0,
+            };
+        });
+        return { status: 'ok', days };
+    } catch {
+        return { status: 'error' };
+    }
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -185,11 +243,15 @@ export default function TripDashboardScreen() {
     const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
     const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
     const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [sharedSummaries, setSharedSummaries] = useState<Record<string, PackingAssignmentSummary>>({});
 
     // ── Weather
     const [weather, setWeather] = useState<WeatherDay[]>([]);
     const [weatherLoading, setWeatherLoading] = useState(false);
     const [weatherLocation, setWeatherLocation] = useState<string | null>(null);
+    const [weatherStatus, setWeatherStatus] = useState<'ok' | 'too_far' | 'error' | 'no_destination' | null>(null);
+    const [weatherAvailableFrom, setWeatherAvailableFrom] = useState<string | null>(null);
 
     // ── Edit FAB
     const [editSheetVisible, setEditSheetVisible] = useState(false);
@@ -223,6 +285,26 @@ export default function TripDashboardScreen() {
             const packData = tripData.packingItems ?? [];
             setPackingItems(packData as any);
             setCheckedIds(new Set(packData.filter(p => p.isChecked).map(p => p.id)));
+
+            // Fetch current user + assignment summaries for shared items
+            try {
+                const userData = await userService.getCurrentUser();
+                setCurrentUserId(userData.id);
+            } catch {}
+
+            const sharedPackData = packData.filter(p => p.isShared);
+            if (sharedPackData.length > 0) {
+                const summariesMap: Record<string, PackingAssignmentSummary> = {};
+                await Promise.all(
+                    sharedPackData.map(async (item) => {
+                        try {
+                            const summary = await packingAssignmentService.getAssignmentSummaryByPackingItemId(item.id);
+                            summariesMap[item.id] = summary;
+                        } catch {}
+                    })
+                );
+                setSharedSummaries(summariesMap);
+            }
 
             // Fetch group detail (not embedded in TripDetail)
             const groupData = await groupService.getGroupDetail(tripData.groupId);
@@ -266,10 +348,22 @@ export default function TripDashboardScreen() {
                 setWeatherLocation(destination);
                 const coords = await geocodeLocation(destination);
                 if (coords) {
-                    const wx = await fetchWeather(coords.lat, coords.lon);
-                    setWeather(wx);
+                    const result = await fetchWeather(coords.lat, coords.lon, startDate, endDate);
+                    if (result.status === 'ok') {
+                        setWeather(result.days);
+                        setWeatherStatus('ok');
+                    } else if (result.status === 'too_far') {
+                        setWeatherStatus('too_far');
+                        setWeatherAvailableFrom(result.availableFrom);
+                    } else {
+                        setWeatherStatus('error');
+                    }
+                } else {
+                    setWeatherStatus('error');
                 }
                 setWeatherLoading(false);
+            } else {
+                setWeatherStatus('no_destination');
             }
         } catch (e: any) {
             showErrorToast('Error', e.message || 'Failed to load trip dashboard');
@@ -344,6 +438,7 @@ export default function TripDashboardScreen() {
     const sharedItems   = packingItems.filter(i => i.isShared);
     const packed     = personalItems.filter(i => checkedIds.has(i.id)).length;
     const totalPack  = personalItems.length;
+    const sharedCovered = sharedItems.filter(i => sharedSummaries[i.id]?.isFullyAssigned).length;
 
     // Group packing by category
     const packGroups: Record<string, PackingItem[]> = {};
@@ -505,62 +600,88 @@ export default function TripDashboardScreen() {
                     {/* ══════════════════════════════════
                          4. WEATHER FORECAST
                     ══════════════════════════════════ */}
-                    <View style={[s.card, shadows.retroSm]}>
-                        <View style={s.cardHeader}>
-                            <Sun size={14} color="#F5A623" />
-                            <Text style={s.cardTitle}>Weather Forecast</Text>
-                        </View>
+                    {(() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        return (
+                            <View style={[s.card, shadows.retroSm]}>
+                                <View style={s.cardHeader}>
+                                    <Sun size={14} color="#F5A623" />
+                                    <Text style={s.cardTitle}>Weather Forecast</Text>
+                                    {summary.startDate && summary.endDate && (
+                                        <Text style={s.weatherDateRange}>
+                                            {fmtDate(summary.startDate)} – {fmtDate(summary.endDate)}
+                                        </Text>
+                                    )}
+                                </View>
 
-                        {weatherLoading ? (
-                            <View style={s.weatherLoading}>
-                                <ActivityIndicator size="small" color={theme.primary} />
-                                <Text style={s.weatherLoadingText}>Fetching weather…</Text>
-                            </View>
-                        ) : weather.length > 0 ? (
-                            <>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -14 }}>
-                                    <View style={s.weatherRow}>
-                                        {weather.map((day, i) => {
-                                            const wx = getWmo(day.wmoCode);
-                                            const WeatherIcon = wx.icon;
-                                            return (
-                                                <View
-                                                    key={day.date}
-                                                    style={[s.weatherCard, i === 0 && { borderColor: theme.primary, borderWidth: 2 }]}
-                                                >
-                                                    <Text style={[s.weatherDay, i === 0 && { color: theme.primary }]}>
-                                                        {i === 0 ? 'Today' : day.dayName}
-                                                    </Text>
-                                                    <WeatherIcon size={28} color={wx.color} />
-                                                    <View style={s.weatherTemps}>
-                                                        <Text style={s.weatherHigh}>{day.maxTemp}°</Text>
-                                                        <Text style={s.weatherLow}>{day.minTemp}°</Text>
-                                                    </View>
-                                                    <View style={s.weatherRain}>
-                                                        <Droplets size={10} color="#4A90D9" />
-                                                        <Text style={s.weatherRainText}>{day.rainChance}%</Text>
-                                                    </View>
-                                                </View>
-                                            );
-                                        })}
+                                {weatherLoading ? (
+                                    <View style={s.weatherLoading}>
+                                        <ActivityIndicator size="small" color={theme.primary} />
+                                        <Text style={s.weatherLoadingText}>Fetching weather…</Text>
                                     </View>
-                                </ScrollView>
-                                {weatherLocation && (
-                                    <Text style={s.weatherLocation}>
-                                        📍 {weatherLocation}
+                                ) : weatherStatus === 'ok' && weather.length > 0 ? (
+                                    <>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -14 }}>
+                                            <View style={s.weatherRow}>
+                                                {weather.map((day) => {
+                                                    const wx = getWmo(day.wmoCode);
+                                                    const WeatherIcon = wx.icon;
+                                                    const isToday = day.date === todayStr;
+                                                    const d = new Date(day.date);
+                                                    const shortDate = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+                                                    return (
+                                                        <View
+                                                            key={day.date}
+                                                            style={[s.weatherCard, isToday && { borderColor: theme.primary, borderWidth: 2 }]}
+                                                        >
+                                                            <Text style={[s.weatherDay, isToday && { color: theme.primary }]}>
+                                                                {isToday ? 'Today' : day.dayName}
+                                                            </Text>
+                                                            <Text style={s.weatherDate}>{shortDate}</Text>
+                                                            <WeatherIcon size={28} color={wx.color} />
+                                                            <View style={s.weatherTemps}>
+                                                                <Text style={s.weatherHigh}>{day.maxTemp}°</Text>
+                                                                <Text style={s.weatherLow}>{day.minTemp}°</Text>
+                                                            </View>
+                                                            <View style={s.weatherRain}>
+                                                                <Droplets size={10} color="#4A90D9" />
+                                                                <Text style={s.weatherRainText}>{day.rainChance}%</Text>
+                                                            </View>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        </ScrollView>
+                                        {weatherLocation && (
+                                            <Text style={s.weatherLocation}>
+                                                📍 {weatherLocation}
+                                            </Text>
+                                        )}
+                                    </>
+                                ) : weatherStatus === 'too_far' ? (
+                                    <View style={s.weatherUnavailable}>
+                                        <Cloud size={28} color={theme.mutedForeground} />
+                                        <Text style={s.weatherUnavailableTitle}>Forecast not available yet</Text>
+                                        <Text style={s.weatherUnavailableSub}>
+                                            Weather data for your trip will be available from{'\n'}
+                                            <Text style={{ color: theme.primary }}>
+                                                {weatherAvailableFrom ? fmtDate(weatherAvailableFrom) : 'your trip start date'}
+                                            </Text>
+                                            {' '}(up to 16 days ahead).
+                                        </Text>
+                                    </View>
+                                ) : weatherStatus === 'error' ? (
+                                    <Text style={s.weatherEmpty}>
+                                        Could not load weather for "{summary.destination}" — check your internet connection.
+                                    </Text>
+                                ) : (
+                                    <Text style={s.weatherEmpty}>
+                                        Finalize a Destination poll to see the weather forecast here.
                                     </Text>
                                 )}
-                            </>
-                        ) : summary.destination ? (
-                            <Text style={s.weatherEmpty}>
-                                Could not load weather for "{summary.destination}" — check your internet connection.
-                            </Text>
-                        ) : (
-                            <Text style={s.weatherEmpty}>
-                                Finalize a Destination poll to see the weather forecast here.
-                            </Text>
-                        )}
-                    </View>
+                            </View>
+                        );
+                    })()}
 
                     {/* ══════════════════════════════════
                          5. TRIP ITINERARY
@@ -626,7 +747,7 @@ export default function TripDashboardScreen() {
                                 {sharedItems.length > 0 && (
                                     <View style={[s.packTabBadge, packTab === 'shared' && { backgroundColor: `${theme.secondary}20` }]}>
                                         <Text style={[s.packTabBadgeText, packTab === 'shared' && { color: theme.secondary }]}>
-                                            {sharedItems.length}
+                                            {sharedCovered}/{sharedItems.length}
                                         </Text>
                                     </View>
                                 )}
@@ -684,7 +805,7 @@ export default function TripDashboardScreen() {
                                 )}
                             </>
                         ) : (
-                            // ── Shared tab
+                            // ── Shared tab — "who brings what"
                             Object.keys(sharedGroups).length === 0 ? (
                                 <EmptySection
                                     label="No shared items yet"
@@ -692,22 +813,107 @@ export default function TripDashboardScreen() {
                                     onCta={() => router.push(`/group/trip/${tripId}/packing` as any)}
                                 />
                             ) : (
-                                Object.entries(sharedGroups).map(([category, items]) => (
-                                    <View key={category} style={s.packGroup}>
-                                        <Text style={s.packGroupLabel}>{category}</Text>
-                                        {items.map(item => (
-                                            <View key={item.id} style={[s.packItemRow, { gap: 10 }]}>
-                                                <View style={[s.packCheckbox, { borderColor: theme.secondary }]}>
-                                                    <Users size={9} color={theme.secondary} />
-                                                </View>
-                                                <Text style={s.packItemName} numberOfLines={1}>{item.name}</Text>
-                                                {item.quantityNeeded > 1 && (
-                                                    <Text style={s.packItemQty}>×{item.quantityNeeded}</Text>
-                                                )}
+                                <>
+                                    {/* Coverage summary bar */}
+                                    {sharedItems.length > 0 && (
+                                        <View style={s.sharedCoverageBar}>
+                                            <View style={s.sharedCoverageHeader}>
+                                                <Text style={s.sharedCoverageLabel}>Coverage</Text>
+                                                <Text style={s.sharedCoverageCount}>
+                                                    {sharedCovered}/{sharedItems.length} items covered
+                                                </Text>
                                             </View>
-                                        ))}
-                                    </View>
-                                ))
+                                            <View style={s.progressTrack}>
+                                                <View style={[
+                                                    s.progressFill,
+                                                    { width: `${Math.round((sharedCovered / sharedItems.length) * 100)}%`, backgroundColor: theme.secondary },
+                                                ]} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {Object.entries(sharedGroups).map(([category, items]) => (
+                                        <View key={category} style={s.packGroup}>
+                                            <Text style={s.packGroupLabel}>{category}</Text>
+                                            {items.map(item => {
+                                                const summary = sharedSummaries[item.id];
+                                                const assignments = summary?.assignments ?? [];
+                                                const isFullyAssigned = summary?.isFullyAssigned ?? false;
+                                                const iMine = assignments.find(a => a.userId === currentUserId);
+
+                                                return (
+                                                    <View key={item.id} style={s.sharedDashRow}>
+                                                        {/* Status icon */}
+                                                        <View style={[
+                                                            s.packCheckbox,
+                                                            isFullyAssigned
+                                                                ? { backgroundColor: theme.accent, borderColor: theme.accent }
+                                                                : iMine
+                                                                    ? { borderColor: theme.primary, backgroundColor: `${theme.primary}15` }
+                                                                    : { borderColor: theme.secondary },
+                                                        ]}>
+                                                            {isFullyAssigned
+                                                                ? <Check size={11} color={theme.primaryForeground} />
+                                                                : iMine
+                                                                    ? <Check size={11} color={theme.primary} />
+                                                                    : <Users size={9} color={theme.secondary} />}
+                                                        </View>
+
+                                                        {/* Name + assignee names */}
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={s.packItemName} numberOfLines={1}>{item.name}</Text>
+                                                            {assignments.length > 0 ? (
+                                                                <Text style={s.sharedDashAssignees} numberOfLines={1}>
+                                                                    {assignments.map(a =>
+                                                                        a.userId === currentUserId ? 'You' : a.userName.split(' ')[0]
+                                                                    ).join(', ')}
+                                                                </Text>
+                                                            ) : (
+                                                                <Text style={s.sharedDashUnclaimed}>Unclaimed</Text>
+                                                            )}
+                                                        </View>
+
+                                                        {/* Avatar stack */}
+                                                        {assignments.length > 0 && (
+                                                            <View style={s.dashAvatarStack}>
+                                                                {assignments.slice(0, 3).map((a, i) => (
+                                                                    <View
+                                                                        key={a.id}
+                                                                        style={[
+                                                                            s.dashAvatar,
+                                                                            { marginLeft: i === 0 ? 0 : -7, zIndex: 3 - i },
+                                                                            a.userId === currentUserId && s.dashAvatarMe,
+                                                                        ]}
+                                                                    >
+                                                                        {a.userAvatarUrl ? (
+                                                                            <RNImage
+                                                                                source={{ uri: a.userAvatarUrl }}
+                                                                                style={s.dashAvatarImg}
+                                                                            />
+                                                                        ) : (
+                                                                            <Text style={s.dashAvatarText}>
+                                                                                {getInitials(a.userName)}
+                                                                            </Text>
+                                                                        )}
+                                                                    </View>
+                                                                ))}
+                                                                {assignments.length > 3 && (
+                                                                    <View style={[s.dashAvatar, s.dashAvatarMore, { marginLeft: -7 }]}>
+                                                                        <Text style={s.dashAvatarMoreText}>+{assignments.length - 3}</Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+                                                        )}
+
+                                                        {item.quantityNeeded > 1 && (
+                                                            <Text style={s.packItemQty}>×{item.quantityNeeded}</Text>
+                                                        )}
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                    ))}
+                                </>
                             )
                         )}
 
@@ -984,8 +1190,13 @@ const s = StyleSheet.create({
     weatherLow:    { fontFamily: fonts.regular, fontSize: 12, color: theme.mutedForeground },
     weatherRain:   { flexDirection: 'row', alignItems: 'center', gap: 3 },
     weatherRainText: { fontFamily: fonts.medium, fontSize: 10, color: '#4A90D9' },
+    weatherDateRange: { fontFamily: fonts.regular, fontSize: 10, color: theme.mutedForeground },
+    weatherDate:   { fontFamily: fonts.regular, fontSize: 10, color: theme.mutedForeground },
     weatherEmpty:  { fontFamily: fonts.regular, fontSize: 12, color: theme.mutedForeground, textAlign: 'center', paddingVertical: 16 },
     weatherLocation: { fontFamily: fonts.regular, fontSize: 11, color: theme.mutedForeground, textAlign: 'center', marginTop: 10 },
+    weatherUnavailable: { alignItems: 'center', paddingVertical: 20, gap: 8 },
+    weatherUnavailableTitle: { fontFamily: fonts.semiBold, fontSize: 14, color: theme.foreground },
+    weatherUnavailableSub: { fontFamily: fonts.regular, fontSize: 12, color: theme.mutedForeground, textAlign: 'center', lineHeight: 18 },
 
     // ── Itinerary
     itinDay: { marginBottom: 16 },
@@ -1040,6 +1251,36 @@ const s = StyleSheet.create({
     packCheckboxChecked:  { backgroundColor: theme.accent, borderColor: theme.accent },
     packItemName:         { fontFamily: fonts.medium, fontSize: 13, color: theme.foreground, flex: 1 },
     packItemNameDone:     { color: theme.mutedForeground, textDecorationLine: 'line-through' },
+
+    // ── Shared packing — dashboard widgets
+    sharedCoverageBar: { marginBottom: 10 },
+    sharedCoverageHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+    sharedCoverageLabel: { fontFamily: fonts.semiBold, fontSize: 12, color: theme.foreground },
+    sharedCoverageCount: { fontFamily: fonts.regular, fontSize: 12, color: theme.mutedForeground },
+
+    sharedDashRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6,
+    },
+    sharedDashAssignees: {
+        fontFamily: fonts.regular, fontSize: 10, color: theme.primary, marginTop: 1,
+    },
+    sharedDashUnclaimed: {
+        fontFamily: fonts.regular, fontSize: 10, color: theme.mutedForeground,
+        fontStyle: 'italic', marginTop: 1,
+    },
+    dashAvatarStack: { flexDirection: 'row', alignItems: 'center' },
+    dashAvatar: {
+        width: 22, height: 22, borderRadius: 11,
+        backgroundColor: `${theme.secondary}30`,
+        borderWidth: 1.5, borderColor: theme.card,
+        justifyContent: 'center', alignItems: 'center',
+    },
+    dashAvatarMe: { backgroundColor: `${theme.primary}30`, borderColor: theme.primary },
+    dashAvatarImg: { width: 22, height: 22, borderRadius: 11 },
+    dashAvatarText: { fontFamily: fonts.bold, fontSize: 8, color: theme.foreground },
+    dashAvatarMore: { backgroundColor: theme.muted },
+    dashAvatarMoreText: { fontFamily: fonts.bold, fontSize: 8, color: theme.mutedForeground },
+
     managePacking: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: 6, marginTop: 10, paddingVertical: 8,

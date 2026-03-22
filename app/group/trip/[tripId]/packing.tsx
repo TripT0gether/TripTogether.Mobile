@@ -23,7 +23,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, Pressable, ScrollView, TextInput, ActivityIndicator,
     Modal, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView,
-    Platform,
+    Platform, Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import {
@@ -41,7 +41,7 @@ import RetroGrid from '../../../../src/components/RetroGrid';
 import { theme, shadows, fonts, radius } from '../../../../src/constants/theme';
 import { showSuccessToast, showErrorToast } from '../../../../src/utils/toast';
 import { PackingItem } from '../../../../src/types/packingItem.types';
-import { PackingAssignment } from '../../../../src/types/packingAssignment.types';
+import { PackingAssignmentSummary } from '../../../../src/types/packingAssignment.types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -53,11 +53,11 @@ const CATEGORY_PRESETS = ['Clothing', 'Electronics', 'Toiletries', 'Documents', 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** Shared item enriched with its loaded assignments */
+/** Shared item enriched with its assignment summary (who brings what) */
 interface SharedItemViewModel {
     item: PackingItem;
-    assignments: PackingAssignment[];
-    loading: boolean; // loading assignments for this item
+    summary: PackingAssignmentSummary | null;
+    loading: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -134,28 +134,28 @@ export default function PackingScreen() {
             // Initialise checked state from API's isChecked field
             setCheckedPersonalIds(new Set(personal.filter(i => i.isChecked).map(i => i.id)));
 
-            // Build shared view models — load assignments in parallel
+            // Build shared view models — load assignment summaries in parallel
             const sharedVMs: SharedItemViewModel[] = shared.map(item => ({
                 item,
-                assignments: [],
+                summary: null,
                 loading: true,
             }));
             setSharedItems(sharedVMs);
 
-            // Fetch assignments for each shared item concurrently
+            // Fetch assignment summary (includes avatar URLs + aggregates) for each shared item
             await Promise.all(
                 shared.map(async (item, idx) => {
                     try {
-                        const assignments = await packingAssignmentService.getAssignmentsByPackingItemId(item.id);
+                        const summary = await packingAssignmentService.getAssignmentSummaryByPackingItemId(item.id);
                         setSharedItems(prev => {
                             const next = [...prev];
-                            next[idx] = { ...next[idx], assignments, loading: false };
+                            next[idx] = { ...next[idx], summary, loading: false };
                             return next;
                         });
                     } catch {
                         setSharedItems(prev => {
                             const next = [...prev];
-                            next[idx] = { ...next[idx], assignments: [], loading: false };
+                            next[idx] = { ...next[idx], summary: null, loading: false };
                             return next;
                         });
                     }
@@ -241,31 +241,66 @@ export default function PackingScreen() {
         if (!currentUserId) return;
         setClaimingId(vm.item.id);
 
-        const myAssignment = vm.assignments.find(a => a.userId === currentUserId);
+        const existingAssignments = vm.summary?.assignments ?? [];
+        const myAssignment = existingAssignments.find(a => a.userId === currentUserId);
 
         try {
             if (myAssignment) {
-                // Un-claim: delete the assignment
                 await packingAssignmentService.deleteAssignment(myAssignment.id);
                 setSharedItems(prev =>
-                    prev.map(v => v.item.id === vm.item.id
-                        ? { ...v, assignments: v.assignments.filter(a => a.id !== myAssignment.id) }
-                        : v
-                    )
+                    prev.map(v => {
+                        if (v.item.id !== vm.item.id || !v.summary) return v;
+                        const newAssignments = v.summary.assignments.filter(a => a.id !== myAssignment.id);
+                        const totalAssigned = newAssignments.reduce((s, a) => s + a.quantity, 0);
+                        return {
+                            ...v,
+                            summary: {
+                                ...v.summary,
+                                assignments: newAssignments,
+                                assignmentCount: newAssignments.length,
+                                totalAssigned,
+                                remaining: v.summary.quantityNeeded - totalAssigned,
+                                isFullyAssigned: false,
+                            },
+                        };
+                    })
                 );
                 showSuccessToast('Un-claimed', vm.item.name);
             } else {
-                // Claim: create assignment with no userId (API assigns to current user)
                 const newAssignment = await packingAssignmentService.createAssignment({
                     packingItemId: vm.item.id,
                     userId: null,
                     quantity: 1,
                 });
                 setSharedItems(prev =>
-                    prev.map(v => v.item.id === vm.item.id
-                        ? { ...v, assignments: [...v.assignments, newAssignment] }
-                        : v
-                    )
+                    prev.map(v => {
+                        if (v.item.id !== vm.item.id) return v;
+                        const base = v.summary ?? {
+                            packingItemId: vm.item.id,
+                            packingItemName: vm.item.name,
+                            category: vm.item.category,
+                            isShared: true,
+                            quantityNeeded: vm.item.quantityNeeded,
+                            totalAssigned: 0,
+                            remaining: vm.item.quantityNeeded,
+                            isFullyAssigned: false,
+                            assignmentCount: 0,
+                            assignments: [],
+                        };
+                        const newAssignments = [...base.assignments, newAssignment];
+                        const totalAssigned = newAssignments.reduce((s, a) => s + a.quantity, 0);
+                        return {
+                            ...v,
+                            summary: {
+                                ...base,
+                                assignments: newAssignments,
+                                assignmentCount: newAssignments.length,
+                                totalAssigned,
+                                remaining: base.quantityNeeded - totalAssigned,
+                                isFullyAssigned: totalAssigned >= base.quantityNeeded,
+                            },
+                        };
+                    })
                 );
                 showSuccessToast("I'll bring it!", vm.item.name);
             }
@@ -344,7 +379,7 @@ export default function PackingScreen() {
     const totalPersonal = personalItems.length;
     const totalShared = sharedItems.length;
     const assignedShared = sharedItems.filter(vm =>
-        vm.assignments.some(a => a.userId === currentUserId)
+        vm.summary?.assignments.some(a => a.userId === currentUserId)
     ).length;
 
     return (
@@ -668,23 +703,38 @@ interface SharedTabProps {
 }
 
 function SharedTab({ items, currentUserId, claimingId, deletingId, onClaimToggle, onDelete, onAdd }: SharedTabProps) {
+    const coveredCount = items.filter(vm => vm.summary?.isFullyAssigned).length;
+
+    // Group by category — same pattern as PersonalTab
+    const groups: Record<string, SharedItemViewModel[]> = {};
+    items.forEach(vm => {
+        const key = vm.item.category || 'Other';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(vm);
+    });
+
     return (
         <View style={{ gap: 12 }}>
-            {/* Section header */}
+            {/* Section header — mirrors PersonalTab header */}
             <View style={[s.sectionCard, shadows.retroSm]}>
                 <View style={s.sectionHeaderRow}>
                     <View style={s.sectionHeaderLeft}>
                         <Users size={16} color={theme.secondary} />
                         <Text style={[s.sectionTitle, { color: theme.secondary }]}>Shared Items</Text>
                     </View>
-                    <Text style={s.sectionMeta}>tap to claim</Text>
+                    <Text style={s.sectionMeta}>
+                        {items.length > 0 ? `${coveredCount}/${items.length} covered` : 'tap to claim'}
+                    </Text>
                 </View>
-                <Text style={s.sectionHint}>
-                    Claim an item to let the group know you'll bring it.
-                </Text>
+                {items.length > 0 && (
+                    <View style={s.progressBarTrack}>
+                        <View style={[s.progressBarFill, { width: `${Math.round((coveredCount / items.length) * 100)}%`, backgroundColor: theme.secondary }]} />
+                    </View>
+                )}
             </View>
 
-            {items.length === 0 ? (
+            {/* Item groups */}
+            {Object.keys(groups).length === 0 ? (
                 <EmptyState
                     icon={<Users size={36} color={theme.muted} />}
                     title="No Shared Items"
@@ -692,76 +742,86 @@ function SharedTab({ items, currentUserId, claimingId, deletingId, onClaimToggle
                     onAdd={onAdd}
                 />
             ) : (
-                <View style={[s.groupCard, shadows.retroSm]}>
-                    {items.map((vm, idx) => {
-                        const myAssignment = vm.assignments.find(a => a.userId === currentUserId);
-                        const isClaimed = !!myAssignment;
-                        const isProcessing = claimingId === vm.item.id;
-                        const isDeleting = deletingId === vm.item.id;
-                        const assignerCount = vm.assignments.length;
+                Object.entries(groups).map(([category, catVMs]) => (
+                    <View key={category} style={[s.groupCard, shadows.retroSm]}>
+                        <Text style={s.groupTitle}>{category}</Text>
+                        {catVMs.map(vm => {
+                            const assignments = vm.summary?.assignments ?? [];
+                            const myAssignment = assignments.find(a => a.userId === currentUserId);
+                            const isClaimed = !!myAssignment;
+                            const isProcessing = claimingId === vm.item.id;
+                            const isDeleting = deletingId === vm.item.id;
 
-                        return (
-                            <View
-                                key={vm.item.id}
-                                style={[s.sharedRow, idx > 0 && s.sharedRowBorder]}
-                            >
-                                {/* Left: item name + qty */}
-                                <View style={s.sharedRowLeft}>
-                                    <Text style={s.itemName} numberOfLines={1}>{vm.item.name}</Text>
-                                    {vm.item.quantityNeeded > 1 && (
-                                        <Text style={s.itemQty}>×{vm.item.quantityNeeded} needed</Text>
-                                    )}
-                                </View>
-
-                                {/* Right: claim button OR assigned avatars */}
-                                <View style={s.sharedRowRight}>
-                                    {vm.loading ? (
-                                        <ActivityIndicator size="small" color={theme.mutedForeground} />
-                                    ) : assignerCount > 0 && !isClaimed ? (
-                                        /* Someone else claimed it — show avatars */
-                                        <View style={s.assigneeStack}>
-                                            {vm.assignments.slice(0, 3).map(a => (
-                                                <View key={a.id} style={s.assigneeAvatar}>
-                                                    <Text style={s.assigneeAvatarText}>
-                                                        {getInitials(a.userName)}
-                                                    </Text>
-                                                </View>
-                                            ))}
-                                            {assignerCount > 3 && (
-                                                <View style={[s.assigneeAvatar, s.assigneeAvatarOverflow]}>
-                                                    <Text style={s.assigneeAvatarText}>+{assignerCount - 3}</Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                    ) : (
-                                        /* Claim / Un-claim button */
-                                        <Pressable
-                                            style={({ pressed }) => [
-                                                s.claimBtn,
-                                                isClaimed && s.claimBtnActive,
-                                                pressed && { opacity: 0.7 },
-                                            ]}
-                                            onPress={() => onClaimToggle(vm)}
-                                            disabled={isProcessing}
-                                        >
-                                            {isProcessing ? (
-                                                <ActivityIndicator size="small" color={isClaimed ? theme.primaryForeground : theme.primary} />
-                                            ) : (
-                                                <>
-                                                    {isClaimed
-                                                        ? <UserCheck size={12} color={theme.primaryForeground} />
-                                                        : <Plus size={12} color={theme.primary} />}
-                                                    <Text style={[s.claimBtnText, isClaimed && s.claimBtnTextActive]}>
-                                                        {isClaimed ? "I've got it" : "I'll bring it"}
-                                                    </Text>
-                                                </>
-                                            )}
-                                        </Pressable>
-                                    )}
-
-                                    {/* Delete button */}
+                            return (
+                                <View
+                                    key={vm.item.id}
+                                    style={[s.itemRow, isClaimed && s.itemRowChecked]}
+                                >
+                                    {/* Claim toggle — styled like a checkbox */}
                                     <Pressable
-                                        style={[s.deleteBtn, { marginLeft: 8 }]}
+                                        style={[s.checkbox, isClaimed && s.checkboxClaimed]}
+                                        onPress={() => onClaimToggle(vm)}
+                                        hitSlop={8}
+                                        disabled={isProcessing || vm.loading}
+                                    >
+                                        {isProcessing ? (
+                                            <ActivityIndicator size="small" color={isClaimed ? theme.primaryForeground : theme.secondary} />
+                                        ) : isClaimed ? (
+                                            <UserCheck size={12} color={theme.primaryForeground} />
+                                        ) : null}
+                                    </Pressable>
+
+                                    {/* Name + assignee info */}
+                                    <View style={s.sharedItemCenter}>
+                                        <Text style={[s.itemName, isClaimed && s.itemNameClaimed]} numberOfLines={1}>
+                                            {vm.item.name}
+                                        </Text>
+                                        {vm.loading ? (
+                                            <ActivityIndicator size="small" color={theme.mutedForeground} style={{ alignSelf: 'flex-start' }} />
+                                        ) : assignments.length > 0 ? (
+                                            <View style={s.assigneeInlineRow}>
+                                                {/* Stacked avatars */}
+                                                {assignments.slice(0, 4).map((a, i) => (
+                                                    <View
+                                                        key={a.id}
+                                                        style={[
+                                                            s.assigneeAvatar,
+                                                            { marginLeft: i === 0 ? 0 : -6, zIndex: 4 - i },
+                                                            a.userId === currentUserId && s.assigneeAvatarMe,
+                                                        ]}
+                                                    >
+                                                        {a.userAvatarUrl ? (
+                                                            <Image source={{ uri: a.userAvatarUrl }} style={s.assigneeAvatarImg} />
+                                                        ) : (
+                                                            <Text style={s.assigneeAvatarText}>{getInitials(a.userName)}</Text>
+                                                        )}
+                                                    </View>
+                                                ))}
+                                                {assignments.length > 4 && (
+                                                    <View style={[s.assigneeAvatar, s.assigneeAvatarOverflow, { marginLeft: -6 }]}>
+                                                        <Text style={s.assigneeAvatarText}>+{assignments.length - 4}</Text>
+                                                    </View>
+                                                )}
+                                                {/* Names */}
+                                                <Text style={s.assigneeNames} numberOfLines={1}>
+                                                    {assignments
+                                                        .map(a => a.userId === currentUserId ? 'You' : a.userName.split(' ')[0])
+                                                        .join(', ')}
+                                                </Text>
+                                            </View>
+                                        ) : (
+                                            <Text style={s.noAssigneeText}>No one yet — tap to claim</Text>
+                                        )}
+                                    </View>
+
+                                    {/* Qty badge */}
+                                    {vm.item.quantityNeeded > 1 && (
+                                        <Text style={s.itemQty}>×{vm.item.quantityNeeded}</Text>
+                                    )}
+
+                                    {/* Delete */}
+                                    <Pressable
+                                        style={s.deleteBtn}
                                         onPress={() => onDelete(vm.item)}
                                         hitSlop={8}
                                         disabled={isDeleting}
@@ -771,10 +831,10 @@ function SharedTab({ items, currentUserId, claimingId, deletingId, onClaimToggle
                                             : <Trash2 size={14} color={theme.destructive} />}
                                     </Pressable>
                                 </View>
-                            </View>
-                        );
-                    })}
-                </View>
+                            );
+                        })}
+                    </View>
+                ))
             )}
 
             {/* Add button */}
@@ -908,41 +968,30 @@ const s = StyleSheet.create({
 
     deleteBtn: { padding: 4 },
 
-    // ── Shared item row
-    sharedRow: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 14, paddingVertical: 13, gap: 8,
-    },
-    sharedRowBorder: { borderTopWidth: 1, borderTopColor: theme.border },
-    sharedRowLeft: { flex: 1, gap: 2 },
-    sharedRowRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    // ── Shared item row extras (on top of the shared itemRow / checkbox styles)
+    checkboxClaimed: { backgroundColor: theme.secondary, borderColor: theme.secondary },
+    itemNameClaimed: { color: theme.secondary },
 
-    // ── Claim button
-    claimBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 4,
-        borderWidth: 1.5, borderColor: theme.primary, borderRadius: radius.full,
-        paddingHorizontal: 10, paddingVertical: 5,
-    },
-    claimBtnActive: {
-        backgroundColor: theme.primary, borderColor: theme.primary,
-    },
-    claimBtnText: {
-        fontFamily: fonts.medium, fontSize: 11, color: theme.primary,
-    },
-    claimBtnTextActive: { color: theme.primaryForeground },
+    sharedItemCenter: { flex: 1, gap: 3 },
 
-    // ── Assignee avatars
-    assigneeStack: { flexDirection: 'row' },
+    assigneeInlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     assigneeAvatar: {
-        width: 26, height: 26, borderRadius: radius.full,
-        backgroundColor: `${theme.primary}20`,
+        width: 18, height: 18, borderRadius: 9,
+        backgroundColor: `${theme.secondary}25`,
+        borderWidth: 1.5, borderColor: theme.card,
         alignItems: 'center', justifyContent: 'center',
-        borderWidth: 2, borderColor: theme.card,
-        marginLeft: -6,
     },
+    assigneeAvatarMe: { backgroundColor: `${theme.primary}30`, borderColor: theme.primary },
     assigneeAvatarOverflow: { backgroundColor: theme.muted },
-    assigneeAvatarText: {
-        fontFamily: fonts.bold, fontSize: 9, color: theme.primary,
+    assigneeAvatarImg: { width: 18, height: 18, borderRadius: 9 },
+    assigneeAvatarText: { fontFamily: fonts.bold, fontSize: 7, color: theme.foreground },
+    assigneeNames: {
+        fontFamily: fonts.medium, fontSize: 10, color: theme.secondary,
+        flexShrink: 1,
+    },
+    noAssigneeText: {
+        fontFamily: fonts.regular, fontSize: 10, color: theme.mutedForeground,
+        fontStyle: 'italic',
     },
 
     // ── Add item button
