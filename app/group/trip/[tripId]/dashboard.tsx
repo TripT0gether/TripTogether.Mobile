@@ -661,13 +661,13 @@ export default function TripDashboardScreen() {
                                 ) : weatherStatus === 'too_far' ? (
                                     <View style={s.weatherUnavailable}>
                                         <Cloud size={28} color={theme.mutedForeground} />
-                                        <Text style={s.weatherUnavailableTitle}>Forecast not available yet</Text>
+                                        <Text style={s.weatherUnavailableTitle}>We're a bit broke here lol 😅</Text>
                                         <Text style={s.weatherUnavailableSub}>
-                                            Weather data for your trip will be available from{'\n'}
+                                            Our weather provider only sees 16 days ahead, so forecast for your trip will be available starting{' '}
                                             <Text style={{ color: theme.primary }}>
                                                 {weatherAvailableFrom ? fmtDate(weatherAvailableFrom) : 'your trip start date'}
                                             </Text>
-                                            {' '}(up to 16 days ahead).
+                                            . Check back closer to the date!
                                         </Text>
                                     </View>
                                 ) : weatherStatus === 'error' ? (
