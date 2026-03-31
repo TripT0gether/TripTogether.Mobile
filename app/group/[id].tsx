@@ -182,6 +182,16 @@ export default function GroupDetailScreen() {
         }
     };
 
+    const handleCopyToken = async () => {
+        if (!invite?.token) return;
+        try {
+            await Clipboard.setStringAsync(invite.token);
+            showSuccessToast('Copied', 'Invite token copied to clipboard');
+        } catch {
+            showErrorToast('Failed', 'Could not copy token');
+        }
+    };
+
     const handleRenameGroup = async () => {
         if (!newGroupName.trim() || !groupId) return;
         setSaving(true);
@@ -576,10 +586,28 @@ export default function GroupDetailScreen() {
 
                         {invite && !invite.isExpired ? (
                             <>
+                                <Text style={s.dialogFieldLabel}>Invite link</Text>
                                 <Pressable style={s.dialogLinkBox} onPress={handleCopyLink}>
                                     <View style={{ flex: 1, paddingRight: 8 }}>
                                         <Text style={s.dialogLinkText} numberOfLines={1} ellipsizeMode="tail">
                                             {invite.inviteUrl}
+                                        </Text>
+                                    </View>
+                                    <View style={s.dialogCopyBtn}>
+                                        <Copy size={16} color={theme.primaryForeground} />
+                                    </View>
+                                </Pressable>
+
+                                <Text style={s.dialogFieldLabel}>Invite token</Text>
+                                <Pressable style={s.dialogLinkBox} onPress={handleCopyToken}>
+                                    <View style={{ flex: 1, paddingRight: 8 }}>
+                                        <Text
+                                            style={s.dialogLinkText}
+                                            numberOfLines={1}
+                                            ellipsizeMode="middle"
+                                            selectable
+                                        >
+                                            {invite.token}
                                         </Text>
                                     </View>
                                     <View style={s.dialogCopyBtn}>
@@ -1123,6 +1151,14 @@ const s = StyleSheet.create({
         backgroundColor: theme.primary,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    dialogFieldLabel: {
+        fontSize: 12,
+        fontFamily: fonts.bold,
+        color: theme.mutedForeground,
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
+        marginBottom: 4,
     },
     dialogExpiryRow: {
         flexDirection: 'row',
